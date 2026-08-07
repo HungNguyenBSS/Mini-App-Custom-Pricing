@@ -1,5 +1,8 @@
 import { Links, Meta, Outlet, Scripts, ScrollRestoration } from "react-router";
+import { Provider as ReduxProvider } from "react-redux";
+import { store } from "./store/store";
 import "@shopify/polaris/build/esm/styles.css";
+
 export default function App() {
   return (
     <html lang="en">
@@ -15,7 +18,9 @@ export default function App() {
         <Links />
       </head>
       <body>
-        <Outlet />
+        <ReduxProvider store={store}>
+          <Outlet />
+        </ReduxProvider>
         <ScrollRestoration />
         <Scripts />
       </body>
