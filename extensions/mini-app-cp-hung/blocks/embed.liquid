@@ -1,0 +1,10 @@
+{% comment %} App embed block — không hiện UI, chỉ chạy script {% endcomment %}
+<script src="{{ 'embed.js' | asset_url }}" defer></script>
+
+{% schema %}
+{
+  "name": "Hung Test Extension",
+  "target": "body",
+  "javascript": "embed.js"
+}
+{% endschema %}
