@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { useNavigate } from "react-router";
 import {
   Page,
   Card,
@@ -8,15 +8,34 @@ import {
   Button,
   ButtonGroup,
   EmptyState,
+  Modal,
   useIndexResourceState,
 } from "@shopify/polaris";
+import { EditIcon } from "@shopify/polaris-icons";
 import { useRules } from "../hooks/useRules";
 
 export default function RulesIndex() {
   const { rules, loading, duplicate, remove } = useRules();
   const navigate = useNavigate();
+  const [ruleToDelete, setRuleToDelete] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const { selectedResources, allResourcesSelected, handleSelectionChange } =
     useIndexResourceState(rules);
+
+  const confirmDelete = async () => {
+    if (!ruleToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      await remove(ruleToDelete.id);
+      setRuleToDelete(null);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const rows = rules.map((rule, index) => (
     <IndexTable.Row
@@ -24,6 +43,7 @@ export default function RulesIndex() {
       key={rule.id}
       selected={selectedResources.includes(rule.id)}
       position={index}
+      onClick={() => navigate(`/app/rules/${rule.id}`)}
     >
       <IndexTable.Cell>{rule.name}</IndexTable.Cell>
       <IndexTable.Cell>
@@ -35,23 +55,23 @@ export default function RulesIndex() {
       <IndexTable.Cell>{rule.createdAt}</IndexTable.Cell>
       <IndexTable.Cell>{rule.updatedAt}</IndexTable.Cell>
       <IndexTable.Cell>
-        <ButtonGroup>
-          <Button
-            icon="EditMinor"
-            onClick={() => navigate(`/app/rules/${rule.id}`)}
-          >
-            Edit
-          </Button>
-          <Button onClick={() => duplicate(rule.id)}>Duplicate</Button>
-          <Button
-            tone="critical"
-            onClick={() => {
-              if (confirm(`Xoá rule "${rule.name}"?`)) remove(rule.id);
-            }}
-          >
-            Remove
-          </Button>
-        </ButtonGroup>
+        <div onClick={(event) => event.stopPropagation()}>
+          <ButtonGroup>
+            <Button
+              icon={EditIcon}
+              onClick={() => navigate(`/app/rules/${rule.id}`)}
+            >
+              Edit
+            </Button>
+            <Button onClick={() => duplicate(rule.id)}>Duplicate</Button>
+            <Button
+              tone="critical"
+              onClick={() => setRuleToDelete({ id: rule.id, name: rule.name })}
+            >
+              Remove
+            </Button>
+          </ButtonGroup>
+        </div>
       </IndexTable.Cell>
     </IndexTable.Row>
   ));
@@ -95,6 +115,27 @@ export default function RulesIndex() {
           </IndexTable>
         )}
       </Card>
+      <Modal
+        open={ruleToDelete !== null}
+        onClose={() => !isDeleting && setRuleToDelete(null)}
+        title="Delete rule"
+        primaryAction={{
+          content: "Delete",
+          loading: isDeleting,
+          onAction: confirmDelete,
+        }}
+        secondaryActions={[
+          {
+            content: "Cancel",
+            disabled: isDeleting,
+            onAction: () => setRuleToDelete(null),
+          },
+        ]}
+      >
+        <Modal.Section>
+          <p>This can’t be undone.</p>
+        </Modal.Section>
+      </Modal>
     </Page>
   );
 }
