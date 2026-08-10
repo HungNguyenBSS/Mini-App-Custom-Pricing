@@ -1,12 +1,21 @@
 // app/routes/app.settings.tsx
 import { useEffect, useState } from "react";
-import { Page, Card, TextField, Text, InlineStack, Button } from "@shopify/polaris";
+import {
+  Page,
+  Card,
+  TextField,
+  Text,
+  InlineStack,
+  Button,
+  BlockStack,
+} from "@shopify/polaris";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import { fetchShopData, updateSenderEmail } from "../store/shopSlice";
 
 export default function Settings() {
   const dispatch = useAppDispatch();
   const shop = useAppSelector((s) => s.shop.data);
+  const loading = useAppSelector((s) => s.shop.loading);
   const [email, setEmail] = useState("");
   const [enabled, setEnabled] = useState(true);
 
@@ -21,24 +30,35 @@ export default function Settings() {
     }
   }, [shop]);
 
+  const handleToggle = () => {
+    const nextEnabled = !enabled;
+    setEnabled(nextEnabled);
+    dispatch(updateSenderEmail({ email, enabled: nextEnabled }));
+  };
+
+  const handleSave = () => {
+    dispatch(updateSenderEmail({ email, enabled }));
+  };
+
   return (
     <Page title="Settings">
       <Card>
-        <InlineStack align="space-between" blockAlign="center">
-          <div>
-            <Text as="p" fontWeight="medium">
-              Allow the app to send information via email
-            </Text>
-            <Text as="p" tone="subdued">
-              All updates and notifications will be sent to: {shop?.senderEmail}
-            </Text>
-          </div>
-          <Button onClick={() => setEnabled((v) => !v)}>
-            {enabled ? "On" : "Off"}
-          </Button>
-        </InlineStack>
-        {enabled && (
-          <div style={{ marginTop: 16 }}>
+        <BlockStack gap="400">
+          <InlineStack align="space-between" blockAlign="center">
+            <div>
+              <Text as="p" fontWeight="medium">
+                Allow the app to send information via email
+              </Text>
+              <Text as="p" tone="subdued">
+                All updates and notifications will be sent to:{" "}
+                {shop?.senderEmail}
+              </Text>
+            </div>
+            <Button loading={loading} onClick={handleToggle}>
+              {enabled ? "On" : "Off"}
+            </Button>
+          </InlineStack>
+          {enabled && (
             <TextField
               label="Sender email"
               type="email"
@@ -46,17 +66,13 @@ export default function Settings() {
               onChange={setEmail}
               autoComplete="off"
               connectedRight={
-                <Button
-                  onClick={() =>
-                    dispatch(updateSenderEmail({ email, enabled }))
-                  }
-                >
+                <Button loading={loading} onClick={handleSave}>
                   Save
                 </Button>
               }
             />
-          </div>
-        )}
+          )}
+        </BlockStack>
       </Card>
     </Page>
   );

@@ -17,14 +17,16 @@ import type { PriceType, Product, Rule } from "../types";
 
 interface Props {
   initial?: Rule;
-  onSubmit: (data: Omit<Rule, "id" | "createdAt" | "updatedAt">) => void;
+  onSubmit: (
+    data: Omit<Rule, "id" | "createdAt" | "updatedAt">,
+  ) => Promise<void>;
   submitLabel: string;
 }
 
 function computeModifiedPrice(
   original: number,
   priceType: PriceType,
-  amount: number
+  amount: number,
 ) {
   if (priceType === "fixed") return amount;
   if (priceType === "decrease_amount") return Math.max(0, original - amount);
@@ -36,19 +38,26 @@ function computeModifiedPrice(
 export function RuleForm({ initial, onSubmit, submitLabel }: Props) {
   const [name, setName] = useState(initial?.name ?? "");
   const [status, setStatus] = useState<Rule["status"]>(
-    initial?.status ?? "enable"
+    initial?.status ?? "enable",
   );
   const [applyTo, setApplyTo] = useState<Rule["applyTo"]>(
-    initial?.applyTo ?? "all"
+    initial?.applyTo ?? "all",
   );
   const [tagInput, setTagInput] = useState("");
   const [tags, setTags] = useState<string[]>(initial?.tags ?? []);
   const [priceType, setPriceType] = useState<PriceType>(
-    initial?.priceType ?? "fixed"
+    initial?.priceType ?? "fixed",
   );
   const [amount, setAmount] = useState(String(initial?.amount ?? ""));
   const [products, setProducts] = useState<Product[]>([]);
   const [showPricing, setShowPricing] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitAttempted, setSubmitAttempted] = useState(false);
+  const [touchedFields, setTouchedFields] = useState({
+    name: false,
+    amount: false,
+    tags: false,
+  });
 
   useEffect(() => {
     api.listProducts().then(setProducts);
@@ -67,14 +76,59 @@ export function RuleForm({ initial, onSubmit, submitLabel }: Props) {
   const removeTag = (tag: string) => setTags(tags.filter((t) => t !== tag));
 
   const relevantProducts = useMemo(() => {
-    // All products, hoặc lọc theo tag (mock: giả sử tất cả product đều match khi có ít nhất 1 tag)
-    return applyTo === "all" ? products : products;
-  }, [applyTo, products]);
+    if (applyTo === "all") return products;
+
+    const normalizedTags = tags.map((tag) => tag.toLowerCase());
+    return products.filter((product) =>
+      product.tags.some((tag) => normalizedTags.includes(tag.toLowerCase())),
+    );
+  }, [applyTo, products, tags]);
 
   const pricingRows = relevantProducts.map((p) => [
     p.title,
     `$${computeModifiedPrice(p.originalPrice, priceType, Number(amount) || 0).toFixed(2)}`,
   ]);
+  const amountValue = Number(amount);
+  const amountError =
+    amount.trim() === ""
+      ? "Amount is required"
+      : Number.isNaN(amountValue) || amountValue < 0
+        ? "Amount must be 0 or greater"
+        : priceType === "decrease_percent" && amountValue > 100
+          ? "Percentage discount cannot exceed 100%"
+          : undefined;
+  const tagsError =
+    applyTo === "tags" && tags.length === 0
+      ? "Add at least one product tag"
+      : undefined;
+  const nameError = name.trim() === "" ? "Name is required" : undefined;
+  const showNameError = (touchedFields.name || submitAttempted) && nameError;
+  const showAmountError =
+    (touchedFields.amount || submitAttempted) && amountError;
+  const showTagsError = (touchedFields.tags || submitAttempted) && tagsError;
+  const canSubmit = !name.trim() || amountError || tagsError || isSubmitting;
+
+  const handleSubmit = async () => {
+    setSubmitAttempted(true);
+
+    if (canSubmit) return;
+
+    setIsSubmitting(true);
+    try {
+      await onSubmit({
+        name: name.trim(),
+        status,
+        priority: initial?.priority ?? 0,
+        applyTo,
+        tags,
+        priceType,
+        amount: amountValue,
+        productIds: relevantProducts.map((p) => p.id),
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <BlockStack gap="400">
@@ -87,10 +141,13 @@ export function RuleForm({ initial, onSubmit, submitLabel }: Props) {
             <TextField
               label="Name"
               value={name}
-              onChange={setName}
+              onChange={(value) => {
+                setName(value);
+                setTouchedFields((current) => ({ ...current, name: true }));
+              }}
               autoComplete="off"
               requiredIndicator
-              error={name.trim() === "" ? "Name is required" : undefined}
+              error={showNameError}
             />
             <Select
               label="Status"
@@ -115,27 +172,40 @@ export function RuleForm({ initial, onSubmit, submitLabel }: Props) {
             checked={applyTo === "all"}
             id="apply-all"
             name="applyTo"
-            onChange={() => setApplyTo("all")}
+            onChange={() => {
+              setApplyTo("all");
+              setTouchedFields((current) => ({ ...current, tags: true }));
+            }}
           />
           <RadioButton
             label="Product tags"
             checked={applyTo === "tags"}
             id="apply-tags"
             name="applyTo"
-            onChange={() => setApplyTo("tags")}
+            onChange={() => {
+              setApplyTo("tags");
+              setTouchedFields((current) => ({ ...current, tags: true }));
+            }}
           />
           {applyTo === "tags" && (
             <BlockStack gap="200">
               <div onKeyDown={handleAddTag}>
                 <TextField
-                    label="Product tags"
-                    labelHidden
-                    placeholder="Nhập tag rồi nhấn Enter"
-                    value={tagInput}
-                    onChange={setTagInput}
-                    autoComplete="off"
-                    />
-                </div>
+                  label="Product tags"
+                  labelHidden
+                  placeholder="Nhap tag roi nhan Enter"
+                  value={tagInput}
+                  onChange={(value) => {
+                    setTagInput(value);
+                    setTouchedFields((current) => ({
+                      ...current,
+                      tags: true,
+                    }));
+                  }}
+                  autoComplete="off"
+                  error={showTagsError}
+                />
+              </div>
               <InlineStack gap="100">
                 {tags.map((tag) => (
                   <Tag key={tag} onRemove={() => removeTag(tag)}>
@@ -178,10 +248,14 @@ export function RuleForm({ initial, onSubmit, submitLabel }: Props) {
             label="Amount"
             type="number"
             value={amount}
-            onChange={setAmount}
+            onChange={(value) => {
+              setAmount(value);
+              setTouchedFields((current) => ({ ...current, amount: true }));
+            }}
             autoComplete="off"
             prefix={priceType !== "decrease_percent" ? "$" : undefined}
             suffix={priceType === "decrease_percent" ? "%" : undefined}
+            error={showAmountError}
           />
         </BlockStack>
       </Card>
@@ -203,19 +277,9 @@ export function RuleForm({ initial, onSubmit, submitLabel }: Props) {
 
       <Button
         variant="primary"
-        disabled={!name.trim()}
-        onClick={() =>
-          onSubmit({
-            name,
-            status,
-            priority: initial?.priority ?? 0,
-            applyTo,
-            tags,
-            priceType,
-            amount: Number(amount) || 0,
-            productIds: relevantProducts.map((p) => p.id),
-          })
-        }
+        disabled={Boolean(canSubmit)}
+        loading={isSubmitting}
+        onClick={handleSubmit}
       >
         {submitLabel}
       </Button>

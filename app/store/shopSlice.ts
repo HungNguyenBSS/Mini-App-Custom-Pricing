@@ -18,7 +18,7 @@ export const updateSenderEmail = createAsyncThunk(
   "shop/updateSenderEmail",
   async ({ email, enabled }: { email: string; enabled: boolean }) => {
     return api.updateSenderEmail(email, enabled);
-  }
+  },
 );
 
 const shopSlice = createSlice({
@@ -34,8 +34,18 @@ const shopSlice = createSlice({
         state.data = action.payload;
         state.loading = false;
       })
+      .addCase(fetchShopData.rejected, (state) => {
+        state.loading = false;
+      })
+      .addCase(updateSenderEmail.pending, (state) => {
+        state.loading = true;
+      })
       .addCase(updateSenderEmail.fulfilled, (state, action) => {
         state.data = action.payload;
+        state.loading = false;
+      })
+      .addCase(updateSenderEmail.rejected, (state) => {
+        state.loading = false;
       });
   },
 });

@@ -22,8 +22,9 @@ export default function RulesIndex() {
     name: string;
   } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const ruleResources = rules.map((rule) => ({ id: rule.id }));
   const { selectedResources, allResourcesSelected, handleSelectionChange } =
-    useIndexResourceState(rules);
+    useIndexResourceState(ruleResources);
 
   const confirmDelete = async () => {
     if (!ruleToDelete) return;

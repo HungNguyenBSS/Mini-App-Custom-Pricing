@@ -18,9 +18,24 @@ let mockRules: Rule[] = [
 ];
 
 const mockProducts: Product[] = [
-  { id: "1", title: "B2Bridge B2B Wholesale Pricing", originalPrice: 99 },
-  { id: "2", title: "SBC B2B Quotes & Quick Order", originalPrice: 50 },
-  { id: "3", title: "test", originalPrice: 10 },
+  {
+    id: "1",
+    title: "B2Bridge B2B Wholesale Pricing",
+    originalPrice: 99,
+    tags: ["b2b", "wholesale"],
+  },
+  {
+    id: "2",
+    title: "SBC B2B Quotes & Quick Order",
+    originalPrice: 50,
+    tags: ["b2b", "quote"],
+  },
+  {
+    id: "3",
+    title: "test",
+    originalPrice: 10,
+    tags: ["retail"],
+  },
 ];
 
 let mockShop: ShopData = {
@@ -45,18 +60,10 @@ export const api = {
   async createRule(data: Omit<Rule, "id" | "createdAt" | "updatedAt">) {
     await delay();
     const newRule: Rule = {
-        ...data,
-        id: crypto.randomUUID(),
-        createdAt: new Date().toISOString().slice(0, 10),
-        updatedAt: "-",
-        name: "",
-        status: "enable",
-        priority: 0,
-        applyTo: "all",
-        tags: [],
-        priceType: "fixed",
-        amount: 0,
-        productIds: []
+      ...data,
+      id: crypto.randomUUID(),
+      createdAt: new Date().toISOString().slice(0, 10),
+      updatedAt: "-",
     };
     mockRules = [...mockRules, newRule];
     return newRule;
@@ -66,7 +73,7 @@ export const api = {
     mockRules = mockRules.map((r) =>
       r.id === id
         ? { ...r, ...data, updatedAt: new Date().toISOString().slice(0, 10) }
-        : r
+        : r,
     );
     return mockRules.find((r) => r.id === id)!;
   },
