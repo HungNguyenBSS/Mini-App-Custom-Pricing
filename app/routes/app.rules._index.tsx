@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router";
 import {
   Page,
@@ -10,6 +10,9 @@ import {
   EmptyState,
   Modal,
   useIndexResourceState,
+  IndexFilters,
+  useSetIndexFiltersMode,
+  IndexFiltersMode,
 } from "@shopify/polaris";
 import { EditIcon } from "@shopify/polaris-icons";
 import { useRules } from "../hooks/useRules";
@@ -22,9 +25,36 @@ export default function RulesIndex() {
     name: string;
   } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const ruleResources = rules.map((rule) => ({ id: rule.id }));
+  
+  // Search state
+  const { mode, setMode } = useSetIndexFiltersMode(IndexFiltersMode.Default);
+  const [queryValue, setQueryValue] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [selectedTab, setSelectedTab] = useState(0);
+  const [sortSelected, setSortSelected] = useState(["name asc"]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedQuery(queryValue);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [queryValue]);
+
+  const onQueryChange = useCallback((value: string) => setQueryValue(value), []);
+  const onQueryClear = useCallback(() => {
+    setQueryValue("");
+    setDebouncedQuery("");
+  }, []);
+  const onTabChange = useCallback((selectedTabIndex: number) => setSelectedTab(selectedTabIndex), []);
+
+  const filteredRules = debouncedQuery
+    ? rules.filter((rule) => rule.name.toLowerCase().includes(debouncedQuery.toLowerCase()))
+    : rules;
+
+  const ruleResources = filteredRules.map((rule) => ({ id: rule.id }));
   const { selectedResources, allResourcesSelected, handleSelectionChange } =
     useIndexResourceState(ruleResources);
+
 
   const confirmDelete = async () => {
     if (!ruleToDelete) return;
@@ -38,7 +68,7 @@ export default function RulesIndex() {
     }
   };
 
-  const rows = rules.map((rule, index) => (
+  const rows = filteredRules.map((rule, index) => (
     <IndexTable.Row
       id={rule.id}
       key={rule.id}
@@ -95,25 +125,54 @@ export default function RulesIndex() {
             <p>Tạo rule giảm giá đầu tiên cho tệp khách hàng cụ thể.</p>
           </EmptyState>
         ) : (
-          <IndexTable
-            resourceName={{ singular: "rule", plural: "rules" }}
-            itemCount={rules.length}
-            selectedItemsCount={
-              allResourcesSelected ? "All" : selectedResources.length
-            }
-            onSelectionChange={handleSelectionChange}
-            loading={loading}
-            headings={[
-              { title: "Name" },
-              { title: "Status" },
-              { title: "Priority" },
-              { title: "Created Date" },
-              { title: "Updated Date" },
-              { title: "Action" },
-            ]}
-          >
-            {rows}
-          </IndexTable>
+          <>
+            <IndexFilters
+              sortOptions={[
+                { label: "Name A-Z", value: "name asc", directionLabel: "A-Z" },
+                { label: "Name Z-A", value: "name desc", directionLabel: "Z-A" },
+              ]}
+              sortSelected={sortSelected}
+              queryValue={queryValue}
+              queryPlaceholder="Searching in all"
+              onQueryChange={onQueryChange}
+              onQueryClear={onQueryClear}
+              onSort={setSortSelected}
+              cancelAction={{
+                onAction: onQueryClear,
+                disabled: false,
+                loading: false,
+              }}
+              tabs={[{ content: "All", id: "all" }]}
+              selected={selectedTab}
+              onSelect={onTabChange}
+              filters={[]}
+              appliedFilters={[]}
+              onClearAll={() => {}}
+              mode={mode}
+              setMode={setMode}
+              canCreateNewView={false}
+              hideFilters
+            />
+            <IndexTable
+              resourceName={{ singular: "rule", plural: "rules" }}
+              itemCount={filteredRules.length}
+              selectedItemsCount={
+                allResourcesSelected ? "All" : selectedResources.length
+              }
+              onSelectionChange={handleSelectionChange}
+              loading={loading}
+              headings={[
+                { title: "Name" },
+                { title: "Status" },
+                { title: "Priority" },
+                { title: "Created Date" },
+                { title: "Updated Date" },
+                { title: "Action" },
+              ]}
+            >
+              {rows}
+            </IndexTable>
+          </>
         )}
       </Card>
       <Modal
