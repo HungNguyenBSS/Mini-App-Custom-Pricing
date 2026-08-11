@@ -17,6 +17,9 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
             id
             title
             tags
+            featuredImage {
+              url
+            }
             variants(first: 1) {
               edges {
                 node {
@@ -35,6 +38,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     id: e.node.id,
     title: e.node.title,
     tags: e.node.tags,
+    image: e.node.featuredImage?.url ?? undefined,
     originalPrice: Number(e.node.variants.edges[0]?.node?.price || 0),
   }));
   return { products };

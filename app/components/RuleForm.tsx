@@ -63,13 +63,18 @@ export function RuleForm({ initial, products, onSubmit, submitLabel }: Props) {
     tags: false,
   });
 
+  const commitTag = (value: string) => {
+    const trimmed = value.trim();
+    if (trimmed && !tags.includes(trimmed)) {
+      setTags((current) => [...current, trimmed]);
+    }
+    setTagInput("");
+  };
+
   const handleAddTag = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "Enter" && tagInput.trim()) {
       event.preventDefault();
-      if (!tags.includes(tagInput.trim())) {
-        setTags([...tags, tagInput.trim()]);
-      }
-      setTagInput("");
+      commitTag(tagInput);
     }
   };
 
@@ -92,8 +97,8 @@ export function RuleForm({ initial, products, onSubmit, submitLabel }: Props) {
         </Text>
       </IndexTable.Cell>
       <IndexTable.Cell>
-        <Thumbnail source={ImageIcon} alt={p.title} size="small" />
-        </IndexTable.Cell>
+        <Thumbnail source={p.image || ImageIcon} alt={p.title} size="small" />
+      </IndexTable.Cell>
       <IndexTable.Cell>{p.title}</IndexTable.Cell>
       <IndexTable.Cell>${p.originalPrice.toFixed(2)}</IndexTable.Cell>
       <IndexTable.Cell>
@@ -111,7 +116,7 @@ export function RuleForm({ initial, products, onSubmit, submitLabel }: Props) {
           ? "Percentage discount cannot exceed 100%"
           : undefined;
   const tagsError =
-    applyTo === "tags" && tags.length === 0
+    applyTo === "tags" && tags.length === 0 && tagInput.trim() === ""
       ? "Add at least one product tag"
       : undefined;
   const nameError = name.trim() === "" ? "Name is required" : undefined;
@@ -183,7 +188,7 @@ export function RuleForm({ initial, products, onSubmit, submitLabel }: Props) {
                 name="applyTo"
                 onChange={() => {
                   setApplyTo("all");
-                  setTouchedFields((current) => ({ ...current, tags: true }));
+                  // setTouchedFields((current) => ({ ...current, tags: true }));
                 }}
               />
               <RadioButton
@@ -193,7 +198,7 @@ export function RuleForm({ initial, products, onSubmit, submitLabel }: Props) {
                 name="applyTo"
                 onChange={() => {
                   setApplyTo("tags");
-                  setTouchedFields((current) => ({ ...current, tags: true }));
+                  // setTouchedFields((current) => ({ ...current, tags: true }));
                 }}
               />
             </BlockStack>
@@ -205,12 +210,10 @@ export function RuleForm({ initial, products, onSubmit, submitLabel }: Props) {
                     labelHidden
                     placeholder="Product tags"
                     value={tagInput}
-                    onChange={(value) => {
-                      setTagInput(value);
-                      setTouchedFields((current) => ({
-                        ...current,
-                        tags: true,
-                      }));
+                    onChange={(value) => setTagInput(value)}
+                    onBlur={() => {
+                      setTouchedFields((current) => ({ ...current, tags: true }));
+                      if (tagInput.trim()) commitTag(tagInput);
                     }}
                     autoComplete="off"
                     error={showTagsError}
@@ -274,7 +277,7 @@ export function RuleForm({ initial, products, onSubmit, submitLabel }: Props) {
         </Card>
       </Layout.AnnotatedSection>
 
-      <Layout.AnnotatedSection 
+      <Layout.AnnotatedSection
         title={
           <Text as="h2" variant="headingMd">
             Apply a price to selected products/variants for All customers.
