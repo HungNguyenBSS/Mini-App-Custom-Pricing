@@ -1,7 +1,13 @@
 import { Links, Meta, Outlet, Scripts, ScrollRestoration } from "react-router";
 import { Provider as ReduxProvider } from "react-redux";
 import { store } from "./store/store";
-import "@shopify/polaris/build/esm/styles.css";
+import polarisStyles from "@shopify/polaris/build/esm/styles.css?url";
+
+export function links() {
+  return [
+    { rel: "stylesheet", href: polarisStyles },
+  ];
+}
 
 export default function App() {
   return (

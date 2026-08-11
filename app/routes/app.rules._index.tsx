@@ -119,7 +119,7 @@ export default function RulesIndex() {
         {rules.length === 0 && !loading ? (
           <EmptyState
             heading="Chưa có rule nào"
-            action={{ content: "Add rule", url: "/app/rules/new" }}
+            action={{ content: "Add rule", onAction: () => navigate("/app/rules/new") }}
             image="https://cdn.shopify.com/s/files/1/0757/9955/files/empty-state.svg"
           >
             <p>Tạo rule giảm giá đầu tiên cho tệp khách hàng cụ thể.</p>

@@ -1,111 +1,72 @@
-// app/mocks/api.ts
+// app/mock/api.ts
 import type { Rule, Product, ShopData } from "../types";
 
-let mockRules: Rule[] = [
-  {
-    id: "1",
-    name: "100",
-    status: "enable",
-    priority: 0,
-    applyTo: "tags",
-    tags: ["b2b", "wholesale"],
-    priceType: "decrease_percent",
-    amount: 20,
-    productIds: ["1", "2", "3"],
-    createdAt: "2025-09-04",
-    updatedAt: "-",
-  },
-];
-
-const mockProducts: Product[] = [
-  {
-    id: "1",
-    title: "B2Bridge B2B Wholesale Pricing",
-    originalPrice: 99,
-    tags: ["b2b", "wholesale"],
-  },
-  {
-    id: "2",
-    title: "SBC B2B Quotes & Quick Order",
-    originalPrice: 50,
-    tags: ["b2b", "quote"],
-  },
-  {
-    id: "3",
-    title: "test",
-    originalPrice: 10,
-    tags: ["retail"],
-  },
-];
-
-let mockShop: ShopData = {
-  id: "1",
-  shopDomain: "h-ng-nt1.myshopify.com",
-  name: "Hung NT1",
-  senderEmail: "luanhv@bsscommerce.com",
-  senderEmailEnabled: true,
-};
-
-const delay = (ms = 400) => new Promise((r) => setTimeout(r, ms));
+const API_BASE = "/api";
 
 export const api = {
   async listRules(): Promise<Rule[]> {
-    await delay();
-    return mockRules;
+    const res = await fetch(`${API_BASE}/rules`);
+    return res.json();
   },
   async getRule(id: string): Promise<Rule | undefined> {
-    await delay();
-    return mockRules.find((r) => r.id === id);
+    const res = await fetch(`${API_BASE}/rules/${id}`);
+    if (res.status === 404) return undefined;
+    return res.json();
   },
   async createRule(data: Omit<Rule, "id" | "createdAt" | "updatedAt">) {
-    await delay();
-    const newRule: Rule = {
-      ...data,
-      id: crypto.randomUUID(),
-      createdAt: new Date().toISOString().slice(0, 10),
-      updatedAt: "-",
-    };
-    mockRules = [...mockRules, newRule];
-    return newRule;
+    const res = await fetch(`${API_BASE}/rules`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    return res.json();
   },
   async updateRule(id: string, data: Partial<Rule>) {
-    await delay();
-    mockRules = mockRules.map((r) =>
-      r.id === id
-        ? { ...r, ...data, updatedAt: new Date().toISOString().slice(0, 10) }
-        : r,
-    );
-    return mockRules.find((r) => r.id === id)!;
+    const res = await fetch(`${API_BASE}/rules/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    return res.json();
   },
   async duplicateRule(id: string) {
-    await delay();
-    const source = mockRules.find((r) => r.id === id);
-    if (!source) throw new Error("Rule not found");
-    const copy: Rule = {
-      ...source,
-      id: crypto.randomUUID(),
-      name: `${source.name} (copy)`,
-      createdAt: new Date().toISOString().slice(0, 10),
-      updatedAt: "-",
-    };
-    mockRules = [...mockRules, copy];
-    return copy;
+    const res = await fetch(`${API_BASE}/rules/${id}/duplicate`, {
+      method: "POST",
+    });
+    return res.json();
   },
   async removeRule(id: string) {
-    await delay();
-    mockRules = mockRules.filter((r) => r.id !== id);
-  },
-  async listProducts(): Promise<Product[]> {
-    await delay();
-    return mockProducts;
+    await fetch(`${API_BASE}/rules/${id}`, {
+      method: "DELETE",
+    });
   },
   async getShop(): Promise<ShopData> {
-    await delay();
-    return mockShop;
+    const res = await fetch(`${API_BASE}/shop`);
+    if (res.status === 404) {
+      // Mock default shop if not created
+      return {
+        id: "1",
+        shopDomain: "h-ng-nt1.myshopify.com",
+        name: "Hung NT1",
+        senderEmail: "luanhv@bsscommerce.com",
+        senderEmailEnabled: true,
+      };
+    }
+    return res.json();
   },
   async updateSenderEmail(senderEmail: string, enabled: boolean) {
-    await delay();
-    mockShop = { ...mockShop, senderEmail, senderEmailEnabled: enabled };
-    return mockShop;
+    const res = await fetch(`${API_BASE}/shop`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ senderEmail, senderEmailEnabled: enabled }),
+    });
+    if (res.status === 404) {
+       return fetch(`${API_BASE}/shop`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ shopDomain: "h-ng-nt1.myshopify.com", senderEmail, senderEmailEnabled: enabled }),
+      }).then(r => r.json());
+    }
+    return res.json();
   },
 };

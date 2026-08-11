@@ -9,9 +9,15 @@ export function useRules() {
 
   const reload = useCallback(async () => {
     setLoading(true);
-    const data = await api.listRules();
-    setRules(data);
-    setLoading(false);
+    try {
+      const data = await api.listRules();
+      setRules(data);
+    } catch (error) {
+      console.error("Failed to load rules:", error);
+      setRules([]);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {

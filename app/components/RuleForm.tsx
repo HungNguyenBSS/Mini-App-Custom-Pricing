@@ -9,14 +9,19 @@ import {
   InlineStack,
   BlockStack,
   Button,
-  DataTable,
+  IndexTable,
   Text,
+  Layout,
+  Thumbnail,
+  PageActions,
 } from "@shopify/polaris";
+import { ImageIcon } from "@shopify/polaris-icons";
 import { api } from "../mock/api";
 import type { PriceType, Product, Rule } from "../types";
 
 interface Props {
   initial?: Rule;
+  products: Product[];
   onSubmit: (
     data: Omit<Rule, "id" | "createdAt" | "updatedAt">,
   ) => Promise<void>;
@@ -35,7 +40,7 @@ function computeModifiedPrice(
   return original;
 }
 
-export function RuleForm({ initial, onSubmit, submitLabel }: Props) {
+export function RuleForm({ initial, products, onSubmit, submitLabel }: Props) {
   const [name, setName] = useState(initial?.name ?? "");
   const [status, setStatus] = useState<Rule["status"]>(
     initial?.status ?? "enable",
@@ -49,7 +54,6 @@ export function RuleForm({ initial, onSubmit, submitLabel }: Props) {
     initial?.priceType ?? "fixed",
   );
   const [amount, setAmount] = useState(String(initial?.amount ?? ""));
-  const [products, setProducts] = useState<Product[]>([]);
   const [showPricing, setShowPricing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitAttempted, setSubmitAttempted] = useState(false);
@@ -58,10 +62,6 @@ export function RuleForm({ initial, onSubmit, submitLabel }: Props) {
     amount: false,
     tags: false,
   });
-
-  useEffect(() => {
-    api.listProducts().then(setProducts);
-  }, []);
 
   const handleAddTag = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "Enter" && tagInput.trim()) {
@@ -84,10 +84,23 @@ export function RuleForm({ initial, onSubmit, submitLabel }: Props) {
     );
   }, [applyTo, products, tags]);
 
-  const pricingRows = relevantProducts.map((p) => [
-    p.title,
-    `$${computeModifiedPrice(p.originalPrice, priceType, Number(amount) || 0).toFixed(2)}`,
-  ]);
+  const rowMarkup = relevantProducts.map((p, index) => (
+    <IndexTable.Row id={p.id} key={p.id} position={index}>
+      <IndexTable.Cell>
+        <Text as="span" variant="bodyMd">
+          {p.id}
+        </Text>
+      </IndexTable.Cell>
+      <IndexTable.Cell>
+        <Thumbnail source={ImageIcon} alt={p.title} size="small" />
+        </IndexTable.Cell>
+      <IndexTable.Cell>{p.title}</IndexTable.Cell>
+      <IndexTable.Cell>${p.originalPrice.toFixed(2)}</IndexTable.Cell>
+      <IndexTable.Cell>
+        ${computeModifiedPrice(p.originalPrice, priceType, Number(amount) || 0).toFixed(2)}
+      </IndexTable.Cell>
+    </IndexTable.Row>
+  ));
   const amountValue = Number(amount);
   const amountError =
     amount.trim() === ""
@@ -131,12 +144,9 @@ export function RuleForm({ initial, onSubmit, submitLabel }: Props) {
   };
 
   return (
-    <BlockStack gap="400">
-      <Card>
-        <BlockStack gap="200">
-          <Text as="h2" variant="headingMd">
-            General information
-          </Text>
+    <Layout>
+      <Layout.AnnotatedSection title="General Information">
+        <Card>
           <FormLayout>
             <TextField
               label="Name"
@@ -159,130 +169,155 @@ export function RuleForm({ initial, onSubmit, submitLabel }: Props) {
               onChange={(v) => setStatus(v as Rule["status"])}
             />
           </FormLayout>
-        </BlockStack>
-      </Card>
+        </Card>
+      </Layout.AnnotatedSection>
 
-      <Card>
-        <BlockStack gap="200">
-          <Text as="h2" variant="headingMd">
-            Apply to Products
-          </Text>
-          <RadioButton
-            label="All products"
-            checked={applyTo === "all"}
-            id="apply-all"
-            name="applyTo"
-            onChange={() => {
-              setApplyTo("all");
-              setTouchedFields((current) => ({ ...current, tags: true }));
-            }}
-          />
-          <RadioButton
-            label="Product tags"
-            checked={applyTo === "tags"}
-            id="apply-tags"
-            name="applyTo"
-            onChange={() => {
-              setApplyTo("tags");
-              setTouchedFields((current) => ({ ...current, tags: true }));
-            }}
-          />
-          {applyTo === "tags" && (
+      <Layout.AnnotatedSection title="Apply to Products">
+        <Card>
+          <BlockStack gap="400">
             <BlockStack gap="200">
-              <div onKeyDown={handleAddTag}>
-                <TextField
-                  label="Product tags"
-                  labelHidden
-                  placeholder="Nhap tag roi nhan Enter"
-                  value={tagInput}
-                  onChange={(value) => {
-                    setTagInput(value);
-                    setTouchedFields((current) => ({
-                      ...current,
-                      tags: true,
-                    }));
-                  }}
-                  autoComplete="off"
-                  error={showTagsError}
-                />
-              </div>
-              <InlineStack gap="100">
-                {tags.map((tag) => (
-                  <Tag key={tag} onRemove={() => removeTag(tag)}>
-                    {tag}
-                  </Tag>
-                ))}
-              </InlineStack>
+              <RadioButton
+                label="All products"
+                checked={applyTo === "all"}
+                id="apply-all"
+                name="applyTo"
+                onChange={() => {
+                  setApplyTo("all");
+                  setTouchedFields((current) => ({ ...current, tags: true }));
+                }}
+              />
+              <RadioButton
+                label="Product tags"
+                checked={applyTo === "tags"}
+                id="apply-tags"
+                name="applyTo"
+                onChange={() => {
+                  setApplyTo("tags");
+                  setTouchedFields((current) => ({ ...current, tags: true }));
+                }}
+              />
             </BlockStack>
-          )}
-        </BlockStack>
-      </Card>
+            {applyTo === "tags" && (
+              <BlockStack gap="200">
+                <div onKeyDown={handleAddTag}>
+                  <TextField
+                    label="Product tags"
+                    labelHidden
+                    placeholder="Product tags"
+                    value={tagInput}
+                    onChange={(value) => {
+                      setTagInput(value);
+                      setTouchedFields((current) => ({
+                        ...current,
+                        tags: true,
+                      }));
+                    }}
+                    autoComplete="off"
+                    error={showTagsError}
+                  />
+                </div>
+                {tags.length > 0 && (
+                  <InlineStack gap="100">
+                    {tags.map((tag) => (
+                      <Tag key={tag} onRemove={() => removeTag(tag)}>
+                        {tag}
+                      </Tag>
+                    ))}
+                  </InlineStack>
+                )}
+              </BlockStack>
+            )}
+          </BlockStack>
+        </Card>
+      </Layout.AnnotatedSection>
 
-      <Card>
-        <BlockStack gap="200">
-          <Text as="h2" variant="headingMd">
-            Custom Prices
-          </Text>
-          <RadioButton
-            label="Apply a price to selected products"
-            checked={priceType === "fixed"}
-            id="price-fixed"
-            name="priceType"
-            onChange={() => setPriceType("fixed")}
-          />
-          <RadioButton
-            label="Decrease a fixed amount of the original prices"
-            checked={priceType === "decrease_amount"}
-            id="price-decrease-amount"
-            name="priceType"
-            onChange={() => setPriceType("decrease_amount")}
-          />
-          <RadioButton
-            label="Decrease the original prices by a percentage (%)"
-            checked={priceType === "decrease_percent"}
-            id="price-decrease-percent"
-            name="priceType"
-            onChange={() => setPriceType("decrease_percent")}
-          />
-          <TextField
-            label="Amount"
-            type="number"
-            value={amount}
-            onChange={(value) => {
-              setAmount(value);
-              setTouchedFields((current) => ({ ...current, amount: true }));
-            }}
-            autoComplete="off"
-            prefix={priceType !== "decrease_percent" ? "$" : undefined}
-            suffix={priceType === "decrease_percent" ? "%" : undefined}
-            error={showAmountError}
-          />
-        </BlockStack>
-      </Card>
-
-      <Card>
-        <BlockStack gap="200">
-          <Button onClick={() => setShowPricing((s) => !s)}>
-            {showPricing ? "Hide" : "Show"} product pricing details
-          </Button>
-          {showPricing && (
-            <DataTable
-              columnContentTypes={["text", "text"]}
-              headings={["Title", "Modified Price"]}
-              rows={pricingRows}
+      <Layout.AnnotatedSection title="Choose B2B discount type">
+        <Card>
+          <BlockStack gap="400">
+            <BlockStack gap="200">
+              <RadioButton
+                label="Apply a price to selected products/variants"
+                checked={priceType === "fixed"}
+                id="price-fixed"
+                name="priceType"
+                onChange={() => setPriceType("fixed")}
+              />
+              <RadioButton
+                label="Decrease a fixed amount off the original price"
+                checked={priceType === "decrease_amount"}
+                id="price-decrease-amount"
+                name="priceType"
+                onChange={() => setPriceType("decrease_amount")}
+              />
+              <RadioButton
+                label="Decrease the original price by a percentage (%)"
+                checked={priceType === "decrease_percent"}
+                id="price-decrease-percent"
+                name="priceType"
+                onChange={() => setPriceType("decrease_percent")}
+              />
+            </BlockStack>
+            <TextField
+              label="Amount"
+              type="number"
+              value={amount}
+              onChange={(value) => {
+                setAmount(value);
+                setTouchedFields((current) => ({ ...current, amount: true }));
+              }}
+              autoComplete="off"
+              suffix={priceType === "decrease_percent" ? "%" : undefined}
+              helpText="The price will be adjusted based on your Shopify Markets setting"
+              error={showAmountError}
             />
-          )}
-        </BlockStack>
-      </Card>
+          </BlockStack>
+        </Card>
+      </Layout.AnnotatedSection>
 
-      <Button
-        variant="primary"
-        disabled={Boolean(canSubmit)}
-        loading={isSubmitting}
-        onClick={handleSubmit}
+      <Layout.AnnotatedSection 
+        title={
+          <Text as="h2" variant="headingMd">
+            Apply a price to selected products/variants for All customers.
+          </Text>
+        }
       >
-        {submitLabel}
-      </Button>
-    </BlockStack>
+        <Card>
+          <BlockStack gap="400">
+            <InlineStack>
+              <Button onClick={() => setShowPricing((s) => !s)}>
+                {showPricing ? "Hide" : "Show"} product pricing details
+              </Button>
+            </InlineStack>
+            {showPricing && (
+              <IndexTable
+                resourceName={{ singular: "product", plural: "products" }}
+                itemCount={relevantProducts.length}
+                headings={[
+                  { title: "ID" },
+                  { title: "Image" },
+                  { title: "Title" },
+                  { title: "Original Price" },
+                  { title: "Modified Price" },
+                ]}
+                selectable={false}
+              >
+                {rowMarkup}
+              </IndexTable>
+            )}
+          </BlockStack>
+        </Card>
+      </Layout.AnnotatedSection>
+
+      <Layout.Section>
+        <PageActions
+          primaryAction={{
+            content: submitLabel,
+            disabled: Boolean(canSubmit),
+            loading: isSubmitting,
+            onAction: handleSubmit,
+          }}
+        />
+      </Layout.Section>
+    </Layout>
   );
 }
