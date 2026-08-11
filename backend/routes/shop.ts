@@ -9,7 +9,6 @@ shopRouter.get('/', async (ctx) => {
   if (shop) {
     ctx.body = shop;
   } else {
-    // If no shop, return a default mock for now or error
     ctx.body = { error: 'Shop not found' };
     ctx.status = 404;
   }
@@ -17,14 +16,25 @@ shopRouter.get('/', async (ctx) => {
 
 shopRouter.post('/', async (ctx) => {
   const data = ctx.request.body as any;
-  const newShop = await Shop.create({
-    id: data.id || randomUUID(),
-    shopDomain: data.shopDomain,
-    name: data.name,
-    senderEmail: data.senderEmail,
-    senderEmailEnabled: data.senderEmailEnabled || false,
+
+  const [shop, created] = await Shop.findOrCreate({
+    where: { shopDomain: data.shopDomain },
+    defaults: {
+      id: randomUUID(),
+      shopDomain: data.shopDomain,
+      accessToken: data.accessToken,
+      name: data.name,
+    },
   });
-  ctx.body = newShop;
+
+  if (!created) {
+    await shop.update({
+      accessToken: data.accessToken,
+      name: data.name,
+    });
+  }
+
+  ctx.body = shop;
 });
 
 shopRouter.put('/', async (ctx) => {

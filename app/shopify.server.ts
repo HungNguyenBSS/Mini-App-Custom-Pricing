@@ -4,8 +4,11 @@ import {
   AppDistribution,
   shopifyApp,
 } from "@shopify/shopify-app-react-router/server";
-import { PrismaSessionStorage } from "@shopify/shopify-app-session-storage-prisma";
-import prisma from "./db.server";
+import { MySQLSessionStorage } from "@shopify/shopify-app-session-storage-mysql";
+
+const mysqlSessionStorage = new MySQLSessionStorage(
+  `mysql://${process.env.DB_USER}:${process.env.DB_PASS}@${process.env.DB_HOST}/${process.env.DB_NAME}`
+);
 
 const shopify = shopifyApp({
   apiKey: process.env.SHOPIFY_API_KEY,
@@ -14,41 +17,37 @@ const shopify = shopifyApp({
   scopes: process.env.SCOPES?.split(","),
   appUrl: process.env.SHOPIFY_APP_URL || "",
   authPathPrefix: "/auth",
-  sessionStorage: new PrismaSessionStorage(prisma),
+  sessionStorage: mysqlSessionStorage,
   distribution: AppDistribution.AppStore,
   future: {
     expiringOfflineAccessTokens: true,
   },
   hooks: {
     afterAuth: async ({ session }) => {
-      // Đăng ký webhook như cũ (nếu bạn có khai báo webhooks ở config)
       await shopify.registerWebhooks({ session });
 
-      // Tạo admin client riêng để gọi GraphQL trong hook này
       const { admin } = await shopify.unauthenticated.admin(session.shop);
-
       const response = await admin.graphql(`#graphql
-        query {
-          shop {
-            name
-          }
-        }
-      `);
+      query { shop { name } }
+    `);
       const data = await response.json();
       const shopName = data.data?.shop?.name ?? session.shop;
 
-      await prisma.shop.upsert({
-        where: { shopDomain: session.shop },
-        update: {
-          accessToken: session.accessToken ?? "",
-          name: shopName,
-        },
-        create: {
-          shopDomain: session.shop,
-          accessToken: session.accessToken ?? "",
-          name: shopName,
-        },
-      });
+      try {
+        const res = await fetch(`${process.env.BACKEND_URL}/shop`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            shopDomain: session.shop,
+            accessToken: session.accessToken,
+            name: shopName,
+          }),
+        });
+        console.log("[afterAuth] backend response status:", res.status);
+        console.log("[afterAuth] backend response body:", await res.text());
+      } catch (err) {
+        console.error("[afterAuth] Failed to sync shop to backend:", err);
+      }
     },
   },
   ...(process.env.SHOP_CUSTOM_DOMAIN
