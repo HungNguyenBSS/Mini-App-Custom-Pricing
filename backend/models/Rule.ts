@@ -2,7 +2,8 @@ import { DataTypes, Model } from 'sequelize';
 import { sequelize } from './index.js';
 
 export class Rule extends Model {
-  declare id: number;
+  declare id: string;
+  declare shopDomain: string;
   declare name: string;
   declare status: 'enable' | 'disable';
   declare priority: number;
@@ -17,6 +18,10 @@ Rule.init({
   id: {
     type: DataTypes.STRING,
     primaryKey: true,
+  },
+  shopDomain: {
+    type: DataTypes.STRING,
+    allowNull: false,
   },
   name: {
     type: DataTypes.STRING,
@@ -34,7 +39,7 @@ Rule.init({
     type: DataTypes.STRING,
   },
   tags: {
-    type: DataTypes.JSON, // Use JSON for arrays in MySQL
+    type: DataTypes.JSON,
     defaultValue: [],
   },
   priceType: {

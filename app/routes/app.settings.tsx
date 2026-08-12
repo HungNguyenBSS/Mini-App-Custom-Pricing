@@ -1,5 +1,7 @@
 // app/routes/app.settings.tsx
 import { useEffect, useState } from "react";
+import type { LoaderFunctionArgs } from "react-router";
+import { useLoaderData } from "react-router";
 import {
   Page,
   Card,
@@ -9,10 +11,17 @@ import {
   Button,
   BlockStack,
 } from "@shopify/polaris";
+import { authenticate } from "../shopify.server";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import { fetchShopData, updateSenderEmail } from "../store/shopSlice";
 
+export const loader = async ({ request }: LoaderFunctionArgs) => {
+  const { session } = await authenticate.admin(request);
+  return { shopDomain: session.shop };
+};
+
 export default function Settings() {
+  const { shopDomain } = useLoaderData<typeof loader>();
   const dispatch = useAppDispatch();
   const shop = useAppSelector((s) => s.shop.data);
   const loading = useAppSelector((s) => s.shop.loading);
@@ -20,8 +29,8 @@ export default function Settings() {
   const [enabled, setEnabled] = useState(true);
 
   useEffect(() => {
-    dispatch(fetchShopData());
-  }, [dispatch]);
+    dispatch(fetchShopData(shopDomain));
+  }, [dispatch, shopDomain]);
 
   useEffect(() => {
     if (shop) {
@@ -33,11 +42,11 @@ export default function Settings() {
   const handleToggle = () => {
     const nextEnabled = !enabled;
     setEnabled(nextEnabled);
-    dispatch(updateSenderEmail({ email, enabled: nextEnabled }));
+    dispatch(updateSenderEmail({ shopDomain, email, enabled: nextEnabled }));
   };
 
   const handleSave = () => {
-    dispatch(updateSenderEmail({ email, enabled }));
+    dispatch(updateSenderEmail({ shopDomain, email, enabled }));
   };
 
   return (

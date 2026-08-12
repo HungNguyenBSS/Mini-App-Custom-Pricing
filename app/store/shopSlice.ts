@@ -1,4 +1,3 @@
-// app/store/shopSlice.ts
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import { api } from "../mock/api";
 import type { ShopData } from "../types";
@@ -10,14 +9,19 @@ interface ShopState {
 
 const initialState: ShopState = { data: null, loading: false };
 
-export const fetchShopData = createAsyncThunk("shop/fetch", async () => {
-  return api.getShop();
-});
+export const fetchShopData = createAsyncThunk(
+  "shop/fetch",
+  async (shopDomain: string) => {
+    return api.getShop(shopDomain);
+  },
+);
 
 export const updateSenderEmail = createAsyncThunk(
   "shop/updateSenderEmail",
-  async ({ email, enabled }: { email: string; enabled: boolean }) => {
-    return api.updateSenderEmail(email, enabled);
+  async (
+    { shopDomain, email, enabled }: { shopDomain: string; email: string; enabled: boolean },
+  ) => {
+    return api.updateSenderEmail(shopDomain, email, enabled);
   },
 );
 

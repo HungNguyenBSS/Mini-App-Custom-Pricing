@@ -1,15 +1,21 @@
 // app/routes/app.rules.$id.tsx
-import { useEffect, useState } from "react";
-import type { LoaderFunctionArgs } from "react-router";
-import { useLoaderData, useNavigate, useParams } from "react-router";
+import { useEffect } from "react";
+import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
+import { useLoaderData, useNavigate, useFetcher } from "react-router";
 import { Banner, EmptyState, Page, Spinner } from "@shopify/polaris";
 import { RuleForm } from "../components/RuleForm";
-import { api } from "../mock/api";
-import type { Rule } from "../types";
 import { authenticate } from "../shopify.server";
-export const loader = async ({ request }: LoaderFunctionArgs) => {
-  const { admin } = await authenticate.admin(request);
-  const response = await admin.graphql(`
+import { syncRulesToMetafield } from "../services/pricing.server";
+import type { Rule } from "../types";
+
+type ActionResult = { ok: true } | { ok: false; error: string };
+type UpdateRuleInput = Omit<Rule, "id" | "createdAt" | "updatedAt">;
+
+export const loader = async ({ request, params }: LoaderFunctionArgs) => {
+  const { admin, session } = await authenticate.admin(request);
+  const id = params.id as string;
+
+  const productsResponse = await admin.graphql(`
     query getProducts {
       products(first: 50) {
         edges {
@@ -32,44 +38,70 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       }
     }
   `);
-  
-  const json = await response.json();
-  const products = json.data.products.edges.map((e: any) => ({
+  const productsJson = await productsResponse.json();
+  const products = productsJson.data.products.edges.map((e: any) => ({
     id: e.node.id,
     title: e.node.title,
     tags: e.node.tags,
     image: e.node.featuredImage?.url ?? undefined,
     originalPrice: Number(e.node.variants.edges[0]?.node?.price || 0),
   }));
-  return { products };
+
+  const ruleRes = await fetch(`${process.env.BACKEND_URL}/rules/${id}`, {
+    headers: { "x-shop-domain": session.shop },
+  });
+  const rule: Rule | null = ruleRes.ok ? await ruleRes.json() : null;
+
+  return { products, rule };
+};
+
+export const action = async ({
+  request,
+  params,
+}: ActionFunctionArgs): Promise<ActionResult> => {
+  const { admin, session } = await authenticate.admin(request);
+  const id = params.id as string;
+  const data = (await request.json()) as UpdateRuleInput;
+
+  try {
+    const res = await fetch(`${process.env.BACKEND_URL}/rules/${id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "x-shop-domain": session.shop,
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!res.ok) {
+      return { ok: false, error: "Could not update rule. Please try again." };
+    }
+
+    await syncRulesToMetafield(admin, session.shop);
+
+    return { ok: true };
+  } catch (err) {
+    console.error("[app.rules.$id action] failed:", err);
+    return { ok: false, error: "Could not update rule. Please try again." };
+  }
 };
 
 export default function EditRule() {
-   const { products } = useLoaderData<typeof loader>();
-  const { id } = useParams();
+  const { products, rule } = useLoaderData<typeof loader>();
   const navigate = useNavigate();
-  const [rule, setRule] = useState<Rule | undefined>();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const fetcher = useFetcher<typeof action>();
+
+  const isSubmitting = fetcher.state !== "idle";
 
   useEffect(() => {
-    if (!id) {
-      setLoading(false);
-      return;
+    if (fetcher.data?.ok) {
+      navigate("/app/rules");
     }
-
-    setLoading(true);
-    api
-      .getRule(id)
-      .then(setRule)
-      .finally(() => setLoading(false));
-  }, [id]);
-
-  if (loading) return <Spinner accessibilityLabel="Loading rule" />;
+  }, [fetcher.data, navigate]);
 
   if (!rule) {
     return (
-       <Page title="Rule not found" backAction={{ url: "/app/rules" }}>
+      <Page title="Rule not found" backAction={{ url: "/app/rules" }}>
         <EmptyState
           heading="Rule not found"
           action={{ content: "Back to rules", onAction: () => navigate("/app/rules") }}
@@ -86,22 +118,21 @@ export default function EditRule() {
       title={`Edit custom pricing rule "${rule.name}"`}
       backAction={{ url: "/app/rules" }}
     >
-      {error && (
+      {fetcher.data && !fetcher.data.ok && (
         <Banner tone="critical">
-          <p>{error}</p>
+          <p>{fetcher.data.error}</p>
         </Banner>
       )}
       <RuleForm
         initial={rule}
         products={products}
         submitLabel="Save changes"
+        submitting={isSubmitting}
         onSubmit={async (data) => {
-          try {
-            await api.updateRule(rule.id, data);
-            navigate("/app/rules");
-          } catch {
-            setError("Could not update rule. Please try again.");
-          }
+          fetcher.submit(data, {
+            method: "post",
+            encType: "application/json",
+          });
         }}
       />
     </Page>

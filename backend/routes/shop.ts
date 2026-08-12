@@ -5,7 +5,13 @@ import { randomUUID } from 'crypto';
 export const shopRouter = new Router();
 
 shopRouter.get('/', async (ctx) => {
-  const shop = await Shop.findOne();
+  const shopDomain = ctx.query.shopDomain as string | undefined;
+  if (!shopDomain) {
+    ctx.status = 400;
+    ctx.body = { error: 'shopDomain query param is required' };
+    return;
+  }
+  const shop = await Shop.findOne({ where: { shopDomain } });
   if (shop) {
     ctx.body = shop;
   } else {
@@ -39,7 +45,15 @@ shopRouter.post('/', async (ctx) => {
 
 shopRouter.put('/', async (ctx) => {
   const data = ctx.request.body as any;
-  let shop = await Shop.findOne();
+  const shopDomain = ctx.get('x-shop-domain') || data.shopDomain;
+
+  if (!shopDomain) {
+    ctx.status = 400;
+    ctx.body = { error: 'shopDomain is required' };
+    return;
+  }
+
+  const shop = await Shop.findOne({ where: { shopDomain } });
   if (shop) {
     await shop.update(data);
     ctx.body = shop;

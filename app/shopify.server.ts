@@ -25,8 +25,9 @@ const shopify = shopifyApp({
   hooks: {
     afterAuth: async ({ session }) => {
       await shopify.registerWebhooks({ session });
-
       const { admin } = await shopify.unauthenticated.admin(session.shop);
+      const { ensureActiveRulesMetafieldDefinition } = await import("./services/pricing.server");
+      await ensureActiveRulesMetafieldDefinition(admin);
       const response = await admin.graphql(`#graphql
       query { shop { name } }
     `);

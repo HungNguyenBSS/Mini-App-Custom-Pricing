@@ -1,31 +1,64 @@
 import { useState, useCallback, useEffect } from "react";
-import { useNavigate } from "react-router";
+import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
+import { useNavigate, useLoaderData, useFetcher } from "react-router";
 import {
-  Page,
-  Card,
-  IndexTable,
-  Badge,
-  Button,
-  ButtonGroup,
-  EmptyState,
-  Modal,
-  useIndexResourceState,
-  IndexFilters,
-  useSetIndexFiltersMode,
-  IndexFiltersMode,
+  Page, Card, IndexTable, Badge, Button, ButtonGroup, EmptyState, Modal,
+  useIndexResourceState, IndexFilters, useSetIndexFiltersMode, IndexFiltersMode,
 } from "@shopify/polaris";
 import { EditIcon } from "@shopify/polaris-icons";
 import { useRules } from "../hooks/useRules";
+import { authenticate } from "../shopify.server";
+import { syncRulesToMetafield } from "../services/pricing.server";
+
+export const loader = async ({ request }: LoaderFunctionArgs) => {
+  const { session } = await authenticate.admin(request);
+  return { shopDomain: session.shop };
+};
+
+type ActionResult = { ok: true } | { ok: false; error: string };
+
+export const action = async ({ request }: ActionFunctionArgs): Promise<ActionResult> => {
+  const { admin, session } = await authenticate.admin(request);
+  const formData = await request.formData();
+  const intent = formData.get("intent");
+  const id = formData.get("id") as string;
+
+  try {
+    if (intent === "duplicate") {
+      const res = await fetch(`${process.env.BACKEND_URL}/rules/${id}/duplicate`, {
+        method: "POST",
+        headers: { "x-shop-domain": session.shop },
+      });
+      if (!res.ok) return { ok: false, error: "Could not duplicate rule." };
+    } else if (intent === "remove") {
+      const res = await fetch(`${process.env.BACKEND_URL}/rules/${id}`, {
+        method: "DELETE",
+        headers: { "x-shop-domain": session.shop },
+      });
+      if (!res.ok) return { ok: false, error: "Could not delete rule." };
+    } else {
+      return { ok: false, error: "Unknown action." };
+    }
+
+    await syncRulesToMetafield(admin, session.shop);
+    return { ok: true };
+  } catch (err) {
+    console.error("[app.rules._index action] failed:", err);
+    return { ok: false, error: "Something went wrong. Please try again." };
+  }
+};
 
 export default function RulesIndex() {
-  const { rules, loading, duplicate, remove } = useRules();
+  const { shopDomain } = useLoaderData<typeof loader>();
+  const { rules, loading, reload } = useRules(shopDomain);
   const navigate = useNavigate();
+  const actionFetcher = useFetcher<typeof action>();
   const [ruleToDelete, setRuleToDelete] = useState<{
     id: string;
     name: string;
   } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  
+
   // Search state
   const { mode, setMode } = useSetIndexFiltersMode(IndexFiltersMode.Default);
   const [queryValue, setQueryValue] = useState("");
@@ -55,18 +88,36 @@ export default function RulesIndex() {
   const { selectedResources, allResourcesSelected, handleSelectionChange } =
     useIndexResourceState(ruleResources);
 
+  // Sau khi action (duplicate/remove) hoàn tất thành công, load lại danh sách
+  useEffect(() => {
+    if (actionFetcher.data?.ok) {
+      reload();
+    }
+  }, [actionFetcher.data, reload]);
+
+  const handleDuplicate = (id: string) => {
+    actionFetcher.submit({ intent: "duplicate", id }, { method: "post" });
+  };
 
   const confirmDelete = async () => {
     if (!ruleToDelete) return;
 
     setIsDeleting(true);
-    try {
-      await remove(ruleToDelete.id);
-      setRuleToDelete(null);
-    } finally {
-      setIsDeleting(false);
-    }
+    actionFetcher.submit(
+      { intent: "remove", id: ruleToDelete.id },
+      { method: "post" },
+    );
   };
+
+  // Đóng modal + tắt loading khi action xoá đã trả kết quả
+  useEffect(() => {
+    if (actionFetcher.state === "idle" && actionFetcher.data && isDeleting) {
+      setIsDeleting(false);
+      if (actionFetcher.data.ok) {
+        setRuleToDelete(null);
+      }
+    }
+  }, [actionFetcher.state, actionFetcher.data, isDeleting]);
 
   const rows = filteredRules.map((rule, index) => (
     <IndexTable.Row
@@ -94,7 +145,7 @@ export default function RulesIndex() {
             >
               Edit
             </Button>
-            <Button onClick={() => duplicate(rule.id)}>Duplicate</Button>
+            <Button onClick={() => handleDuplicate(rule.id)}>Duplicate</Button>
             <Button
               tone="critical"
               onClick={() => setRuleToDelete({ id: rule.id, name: rule.name })}
@@ -193,7 +244,7 @@ export default function RulesIndex() {
         ]}
       >
         <Modal.Section>
-          <p>This can’t be undone.</p>
+          <p>This can't be undone.</p>
         </Modal.Section>
       </Modal>
     </Page>

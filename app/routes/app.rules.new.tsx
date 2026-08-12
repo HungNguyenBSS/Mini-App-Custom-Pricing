@@ -1,11 +1,15 @@
 // app/routes/app.rules.new.tsx
-import { useState } from "react";
-import type { LoaderFunctionArgs } from "react-router";
-import { useLoaderData, useNavigate } from "react-router";
+import { useEffect } from "react";
+import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
+import { useLoaderData, useNavigate, useFetcher } from "react-router";
 import { Banner, Page } from "@shopify/polaris";
 import { RuleForm } from "../components/RuleForm";
-import { api } from "../mock/api";
 import { authenticate } from "../shopify.server";
+import { syncRulesToMetafield } from "../services/pricing.server";
+import type { Rule } from "../types";
+
+type ActionResult = { ok: true } | { ok: false; error: string };
+type CreateRuleInput = Omit<Rule, "id" | "createdAt" | "updatedAt">;
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { admin } = await authenticate.admin(request);
@@ -32,7 +36,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       }
     }
   `);
-  
+
   const json = await response.json();
   const products = json.data.products.edges.map((e: any) => ({
     id: e.node.id,
@@ -43,28 +47,65 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   }));
   return { products };
 };
+
+export const action = async ({
+  request,
+}: ActionFunctionArgs): Promise<ActionResult> => {
+  const { admin, session } = await authenticate.admin(request);
+  const data = (await request.json()) as CreateRuleInput;
+
+  try {
+    const res = await fetch(`${process.env.BACKEND_URL}/rules`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-shop-domain": session.shop,
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!res.ok) {
+      return { ok: false, error: "Could not create rule. Please try again." };
+    }
+
+    await syncRulesToMetafield(admin, session.shop);
+
+    return { ok: true };
+  } catch (err) {
+    console.error("[app.rules.new action] failed:", err);
+    return { ok: false, error: "Could not create rule. Please try again." };
+  }
+};
+
 export default function NewRule() {
   const { products } = useLoaderData<typeof loader>();
   const navigate = useNavigate();
-  const [error, setError] = useState<string | null>(null);
+  const fetcher = useFetcher<typeof action>();
+
+  const isSubmitting = fetcher.state !== "idle";
+
+  useEffect(() => {
+    if (fetcher.data?.ok) {
+      navigate("/app/rules");
+    }
+  }, [fetcher.data, navigate]);
 
   return (
-     <Page title="Create custom pricing rule" backAction={{ url: "/app/rules" }}>
-      {error && (
+    <Page title="Create custom pricing rule" backAction={{ url: "/app/rules" }}>
+      {fetcher.data && !fetcher.data.ok && (
         <Banner tone="critical">
-          <p>{error}</p>
+          <p>{fetcher.data.error}</p>
         </Banner>
       )}
       <RuleForm
-       products={products}
+        products={products}
         submitLabel="Create rule"
+        submitting={isSubmitting}
         onSubmit={async (data) => {
-          try {
-            await api.createRule(data);
-            navigate("/app/rules");
-          } catch {
-            setError("Could not create rule. Please try again.");
-          }
+          fetcher.submit(data, {
+            method: "post",
+            encType: "application/json",
+          });
         }}
       />
     </Page>

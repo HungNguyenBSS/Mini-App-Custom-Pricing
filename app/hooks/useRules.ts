@@ -1,16 +1,15 @@
-// app/hooks/useRules.ts
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../mock/api";
 import type { Rule } from "../types";
 
-export function useRules() {
+export function useRules(shopDomain: string) {
   const [rules, setRules] = useState<Rule[]>([]);
   const [loading, setLoading] = useState(true);
 
   const reload = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await api.listRules();
+      const data = await api.listRules(shopDomain);
       setRules(data);
     } catch (error) {
       console.error("Failed to load rules:", error);
@@ -18,27 +17,11 @@ export function useRules() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [shopDomain]);
 
   useEffect(() => {
     reload();
   }, [reload]);
 
-  const duplicate = useCallback(
-    async (id: string) => {
-      await api.duplicateRule(id);
-      await reload();
-    },
-    [reload]
-  );
-
-  const remove = useCallback(
-    async (id: string) => {
-      await api.removeRule(id);
-      await reload();
-    },
-    [reload]
-  );
-
-  return { rules, loading, reload, duplicate, remove };
+  return { rules, loading, reload };
 }

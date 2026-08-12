@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Card,
   FormLayout,
@@ -16,7 +16,6 @@ import {
   PageActions,
 } from "@shopify/polaris";
 import { ImageIcon } from "@shopify/polaris-icons";
-import { api } from "../mock/api";
 import type { PriceType, Product, Rule } from "../types";
 
 interface Props {
@@ -26,6 +25,7 @@ interface Props {
     data: Omit<Rule, "id" | "createdAt" | "updatedAt">,
   ) => Promise<void>;
   submitLabel: string;
+  submitting?: boolean;
 }
 
 function computeModifiedPrice(
@@ -40,7 +40,13 @@ function computeModifiedPrice(
   return original;
 }
 
-export function RuleForm({ initial, products, onSubmit, submitLabel }: Props) {
+export function RuleForm({
+  initial,
+  products,
+  onSubmit,
+  submitLabel,
+  submitting,
+}: Props) {
   const [name, setName] = useState(initial?.name ?? "");
   const [status, setStatus] = useState<Rule["status"]>(
     initial?.status ?? "enable",
@@ -63,6 +69,9 @@ export function RuleForm({ initial, products, onSubmit, submitLabel }: Props) {
     tags: false,
   });
 
+  // Ưu tiên trạng thái loading do route cha điều khiển (fetcher), fallback về state nội bộ
+  const effectiveSubmitting = submitting ?? isSubmitting;
+
   const commitTag = (value: string) => {
     const trimmed = value.trim();
     if (trimmed && !tags.includes(trimmed)) {
@@ -84,9 +93,10 @@ export function RuleForm({ initial, products, onSubmit, submitLabel }: Props) {
     if (applyTo === "all") return products;
 
     const normalizedTags = tags.map((tag) => tag.toLowerCase());
-    return products.filter((product) =>
-      product.tags.some((tag) => normalizedTags.includes(tag.toLowerCase())),
-    );
+    return products.filter((product) => {
+      const productTags = product.tags.map((tag) => tag.toLowerCase());
+      return normalizedTags.every((tag) => productTags.includes(tag));
+    });
   }, [applyTo, products, tags]);
 
   const rowMarkup = relevantProducts.map((p, index) => (
@@ -124,7 +134,8 @@ export function RuleForm({ initial, products, onSubmit, submitLabel }: Props) {
   const showAmountError =
     (touchedFields.amount || submitAttempted) && amountError;
   const showTagsError = (touchedFields.tags || submitAttempted) && tagsError;
-  const canSubmit = !name.trim() || amountError || tagsError || isSubmitting;
+  const canSubmit =
+    !name.trim() || amountError || tagsError || effectiveSubmitting;
 
   const handleSubmit = async () => {
     setSubmitAttempted(true);
@@ -186,20 +197,14 @@ export function RuleForm({ initial, products, onSubmit, submitLabel }: Props) {
                 checked={applyTo === "all"}
                 id="apply-all"
                 name="applyTo"
-                onChange={() => {
-                  setApplyTo("all");
-                  // setTouchedFields((current) => ({ ...current, tags: true }));
-                }}
+                onChange={() => setApplyTo("all")}
               />
               <RadioButton
                 label="Product tags"
                 checked={applyTo === "tags"}
                 id="apply-tags"
                 name="applyTo"
-                onChange={() => {
-                  setApplyTo("tags");
-                  // setTouchedFields((current) => ({ ...current, tags: true }));
-                }}
+                onChange={() => setApplyTo("tags")}
               />
             </BlockStack>
             {applyTo === "tags" && (
@@ -212,7 +217,10 @@ export function RuleForm({ initial, products, onSubmit, submitLabel }: Props) {
                     value={tagInput}
                     onChange={(value) => setTagInput(value)}
                     onBlur={() => {
-                      setTouchedFields((current) => ({ ...current, tags: true }));
+                      setTouchedFields((current) => ({
+                        ...current,
+                        tags: true,
+                      }));
                       if (tagInput.trim()) commitTag(tagInput);
                     }}
                     autoComplete="off"
@@ -316,7 +324,7 @@ export function RuleForm({ initial, products, onSubmit, submitLabel }: Props) {
           primaryAction={{
             content: submitLabel,
             disabled: Boolean(canSubmit),
-            loading: isSubmitting,
+            loading: effectiveSubmitting,
             onAction: handleSubmit,
           }}
         />
