@@ -17,6 +17,21 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
 type ActionResult = { ok: true } | { ok: false; error: string };
 
+function formatDateTime(value: string) {
+  if (!value) return "--";
+  const date = new Date(value);
+  if (isNaN(date.getTime())) return value;
+  return date.toLocaleString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
+}
+
 export const action = async ({ request }: ActionFunctionArgs): Promise<ActionResult> => {
   const { admin, session } = await authenticate.admin(request);
   const formData = await request.formData();
@@ -166,7 +181,13 @@ export default function RulesIndex() {
       key={rule.id}
       selected={selectedResources.includes(rule.id)}
       position={index}
-      onClick={() => navigate(`/app/rules/${rule.id}`)}
+      onClick={() => {
+        const selection = window.getSelection();
+        if (selection && selection.toString().length > 0) {
+          return;
+        }
+        navigate(`/app/rules/${rule.id}`);
+      }}
     >
       <IndexTable.Cell>{rule.name}</IndexTable.Cell>
       <IndexTable.Cell>
@@ -175,8 +196,8 @@ export default function RulesIndex() {
         </Badge>
       </IndexTable.Cell>
       <IndexTable.Cell>{rule.priority}</IndexTable.Cell>
-      <IndexTable.Cell>{rule.createdAt}</IndexTable.Cell>
-      <IndexTable.Cell>{rule.updatedAt}</IndexTable.Cell>
+      <IndexTable.Cell>{formatDateTime(rule.createdAt)}</IndexTable.Cell>
+      <IndexTable.Cell>{formatDateTime(rule.updatedAt)}</IndexTable.Cell>
       <IndexTable.Cell>
         <div onClick={(event) => event.stopPropagation()}>
           <ButtonGroup>
@@ -241,7 +262,7 @@ export default function RulesIndex() {
               onSelect={onTabChange}
               filters={[]}
               appliedFilters={[]}
-              onClearAll={() => {}}
+              onClearAll={() => { }}
               mode={mode}
               setMode={setMode}
               canCreateNewView={false}
