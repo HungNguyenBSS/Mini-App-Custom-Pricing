@@ -64,7 +64,7 @@
         });
 
         matched.sort(function (a, b) {
-            return (a.priority || 0) - (b.priority || 0);
+            return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
         });
 
         return matched[0];

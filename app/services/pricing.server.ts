@@ -9,6 +9,7 @@ interface BackendRule {
   tags: string[];
   priceType: string;
   amount: number;
+  createdAt: string;
 }
 
 export async function syncRulesToMetafield(admin: AdminApiContext, shopDomain: string) {
@@ -23,11 +24,11 @@ export async function syncRulesToMetafield(admin: AdminApiContext, shopDomain: s
 
   const payload = rules.map((r) => ({
     id: r.id,
-    priority: r.priority,
     applyTo: r.applyTo,
     tags: r.tags,
     priceType: r.priceType,
     amount: r.amount,
+    createdAt: r.createdAt,
   }));
 
   const shopQuery = await admin.graphql(`#graphql
@@ -91,7 +92,6 @@ export async function ensureActiveRulesMetafieldDefinition(admin: AdminApiContex
   );
   const result = await response.json();
   const errors = result.data?.metafieldDefinitionCreate?.userErrors;
-  // Bỏ qua lỗi "đã tồn tại" (code TAKEN), throw các lỗi khác
   const realErrors = errors?.filter((e: any) => e.code !== "TAKEN");
   if (realErrors?.length) {
     throw new Error(`Definition creation failed: ${JSON.stringify(realErrors)}`);

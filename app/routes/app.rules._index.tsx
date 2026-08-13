@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { useNavigate, useLoaderData, useFetcher } from "react-router";
 import {
@@ -21,21 +21,36 @@ export const action = async ({ request }: ActionFunctionArgs): Promise<ActionRes
   const { admin, session } = await authenticate.admin(request);
   const formData = await request.formData();
   const intent = formData.get("intent");
-  const id = formData.get("id") as string;
+  const ids = formData.getAll("id") as string[];
 
   try {
     if (intent === "duplicate") {
-      const res = await fetch(`${process.env.BACKEND_URL}/rules/${id}/duplicate`, {
+      const res = await fetch(`${process.env.BACKEND_URL}/rules/${ids[0]}/duplicate`, {
         method: "POST",
         headers: { "x-shop-domain": session.shop },
       });
       if (!res.ok) return { ok: false, error: "Could not duplicate rule." };
     } else if (intent === "remove") {
-      const res = await fetch(`${process.env.BACKEND_URL}/rules/${id}`, {
-        method: "DELETE",
-        headers: { "x-shop-domain": session.shop },
-      });
-      if (!res.ok) return { ok: false, error: "Could not delete rule." };
+      for (const id of ids) {
+        const res = await fetch(`${process.env.BACKEND_URL}/rules/${id}`, {
+          method: "DELETE",
+          headers: { "x-shop-domain": session.shop },
+        });
+        if (!res.ok) return { ok: false, error: "Could not delete rule." };
+      }
+    } else if (intent === "enable" || intent === "disable") {
+      const status = intent === "enable" ? "enable" : "disable";
+      for (const id of ids) {
+        const res = await fetch(`${process.env.BACKEND_URL}/rules/${id}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            "x-shop-domain": session.shop,
+          },
+          body: JSON.stringify({ status }),
+        });
+        if (!res.ok) return { ok: false, error: `Could not ${status} rule(s).` };
+      }
     } else {
       return { ok: false, error: "Unknown action." };
     }
@@ -64,7 +79,8 @@ export default function RulesIndex() {
   const [queryValue, setQueryValue] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [selectedTab, setSelectedTab] = useState(0);
-  const [sortSelected, setSortSelected] = useState(["name asc"]);
+  // Mặc định: rule tạo sớm nhất hiện lên đầu
+  const [sortSelected, setSortSelected] = useState(["createdAt asc"]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -84,29 +100,54 @@ export default function RulesIndex() {
     ? rules.filter((rule) => rule.name.toLowerCase().includes(debouncedQuery.toLowerCase()))
     : rules;
 
-  const ruleResources = filteredRules.map((rule) => ({ id: rule.id }));
-  const { selectedResources, allResourcesSelected, handleSelectionChange } =
+  const sortedRules = useMemo(() => {
+    const [field, direction] = sortSelected[0].split(" ");
+    const sorted = [...filteredRules].sort((a, b) => {
+      if (field === "name") {
+        return a.name.localeCompare(b.name);
+      }
+      if (field === "createdAt") {
+        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      }
+      return 0;
+    });
+    return direction === "desc" ? sorted.reverse() : sorted;
+  }, [filteredRules, sortSelected]);
+
+  const ruleResources = sortedRules.map((rule) => ({ id: rule.id }));
+  const { selectedResources, allResourcesSelected, handleSelectionChange, clearSelection } =
     useIndexResourceState(ruleResources);
 
-  // Sau khi action (duplicate/remove) hoàn tất thành công, load lại danh sách
+  // Sau khi action (bulk/duplicate/remove) hoàn tất thành công, load lại danh sách
   useEffect(() => {
     if (actionFetcher.data?.ok) {
       reload();
+      clearSelection();
     }
-  }, [actionFetcher.data, reload]);
+  }, [actionFetcher.data, reload, clearSelection]);
 
   const handleDuplicate = (id: string) => {
-    actionFetcher.submit({ intent: "duplicate", id }, { method: "post" });
+    const formData = new FormData();
+    formData.set("intent", "duplicate");
+    formData.set("id", id);
+    actionFetcher.submit(formData, { method: "post" });
+  };
+
+  const handleBulkAction = (intent: "enable" | "disable" | "remove") => {
+    const formData = new FormData();
+    formData.set("intent", intent);
+    selectedResources.forEach((id) => formData.append("id", id));
+    actionFetcher.submit(formData, { method: "post" });
   };
 
   const confirmDelete = async () => {
     if (!ruleToDelete) return;
 
     setIsDeleting(true);
-    actionFetcher.submit(
-      { intent: "remove", id: ruleToDelete.id },
-      { method: "post" },
-    );
+    const formData = new FormData();
+    formData.set("intent", "remove");
+    formData.set("id", ruleToDelete.id);
+    actionFetcher.submit(formData, { method: "post" });
   };
 
   // Đóng modal + tắt loading khi action xoá đã trả kết quả
@@ -119,7 +160,7 @@ export default function RulesIndex() {
     }
   }, [actionFetcher.state, actionFetcher.data, isDeleting]);
 
-  const rows = filteredRules.map((rule, index) => (
+  const rows = sortedRules.map((rule, index) => (
     <IndexTable.Row
       id={rule.id}
       key={rule.id}
@@ -179,8 +220,10 @@ export default function RulesIndex() {
           <>
             <IndexFilters
               sortOptions={[
-                { label: "Name A-Z", value: "name asc", directionLabel: "A-Z" },
-                { label: "Name Z-A", value: "name desc", directionLabel: "Z-A" },
+                { label: "Name", value: "name asc", directionLabel: "A-Z" },
+                { label: "Name", value: "name desc", directionLabel: "Z-A" },
+                { label: "Created Date", value: "createdAt asc", directionLabel: "Ascending" },
+                { label: "Created Date", value: "createdAt desc", directionLabel: "Descending" },
               ]}
               sortSelected={sortSelected}
               queryValue={queryValue}
@@ -206,12 +249,26 @@ export default function RulesIndex() {
             />
             <IndexTable
               resourceName={{ singular: "rule", plural: "rules" }}
-              itemCount={filteredRules.length}
+              itemCount={sortedRules.length}
               selectedItemsCount={
                 allResourcesSelected ? "All" : selectedResources.length
               }
               onSelectionChange={handleSelectionChange}
               loading={loading}
+              bulkActions={[
+                {
+                  content: "Enable",
+                  onAction: () => handleBulkAction("enable"),
+                },
+                {
+                  content: "Disable",
+                  onAction: () => handleBulkAction("disable"),
+                },
+                {
+                  content: "Delete",
+                  onAction: () => handleBulkAction("remove"),
+                },
+              ]}
               headings={[
                 { title: "Name" },
                 { title: "Status" },
