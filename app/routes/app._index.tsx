@@ -4,7 +4,7 @@ import type {
   HeadersFunction,
   LoaderFunctionArgs,
 } from "react-router";
-import { useFetcher } from "react-router";
+import { useFetcher, useLoaderData } from "react-router";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import {
   Page,
@@ -17,13 +17,16 @@ import {
   Box,
   List,
   Link,
+  Badge,
 } from "@shopify/polaris";
 import { authenticate } from "../shopify.server";
 import { boundary } from "@shopify/shopify-app-react-router/server";
+import { useAppDispatch, useAppSelector } from "../store/hooks";
+import { fetchShopData } from "../store/shopSlice";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  await authenticate.admin(request);
-  return null;
+  const { session } = await authenticate.admin(request);
+  return { shopDomain: session.shop };
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
@@ -126,6 +129,15 @@ function CodeBlock({ data }: { data: unknown }) {
 }
 
 export default function Index() {
+  const { shopDomain } = useLoaderData<typeof loader>();
+  const dispatch = useAppDispatch();
+  const shop = useAppSelector((s) => s.shop.data);
+  const shopLoading = useAppSelector((s) => s.shop.loading);
+
+  useEffect(() => {
+    dispatch(fetchShopData(shopDomain));
+  }, [dispatch, shopDomain]);
+
   const fetcher = useFetcher<typeof action>();
   const shopify = useAppBridge();
   const isLoading =
@@ -152,6 +164,27 @@ export default function Index() {
       <Layout>
         <Layout.Section>
           <BlockStack gap="400">
+            <Card>
+              <BlockStack gap="200">
+                <InlineStack align="space-between" blockAlign="center">
+                  <Text as="h2" variant="headingMd">
+                    Store information
+                  </Text>
+                  {shopLoading && <Badge>Loading…</Badge>}
+                </InlineStack>
+                {shop && (
+                  <BlockStack gap="100">
+                    <Text as="p" fontWeight="medium">
+                      {shop.name}
+                    </Text>
+                    <Text as="p" tone="subdued">
+                      {shop.shopDomain}
+                    </Text>
+                  </BlockStack>
+                )}
+              </BlockStack>
+            </Card>
+
             <Card>
               <BlockStack gap="200">
                 <Text as="h2" variant="headingMd">
@@ -264,12 +297,7 @@ export default function Index() {
                     Metafields &amp; metaobjects
                   </Link>
                 </Text>
-                <Text as="p">
-                  Database:{" "}
-                  <Link url="https://www.prisma.io/" target="_blank">
-                    Prisma
-                  </Link>
-                </Text>
+                <Text as="p">Database: MySQL (Sequelize)</Text>
               </BlockStack>
             </Card>
 

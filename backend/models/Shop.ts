@@ -26,6 +26,10 @@ Shop.init({
     type: DataTypes.STRING,
     allowNull: true,
   },
+  status: {
+  type: DataTypes.STRING,
+  defaultValue: 'active',
+},
 }, {
   sequelize,
   tableName: 'shops',

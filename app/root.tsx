@@ -1,4 +1,6 @@
 import { Links, Meta, Outlet, Scripts, ScrollRestoration } from "react-router";
+import { Provider as ReduxProvider } from "react-redux";
+import { store } from "./store/store";
 import polarisStyles from "@shopify/polaris/build/esm/styles.css?url";
 
 export function links() {
@@ -22,7 +24,9 @@ export default function App() {
         <Links />
       </head>
       <body>
-        <Outlet />
+        <ReduxProvider store={store}>
+          <Outlet />
+        </ReduxProvider>
         <ScrollRestoration />
         <Scripts />
       </body>

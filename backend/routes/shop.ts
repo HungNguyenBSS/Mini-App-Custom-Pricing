@@ -30,6 +30,7 @@ shopRouter.post('/', async (ctx) => {
       shopDomain: data.shopDomain,
       accessToken: data.accessToken,
       name: data.name,
+      status: data.status || 'active',
     },
   });
 
@@ -37,8 +38,25 @@ shopRouter.post('/', async (ctx) => {
     await shop.update({
       accessToken: data.accessToken,
       name: data.name,
+      status: data.status || 'active',
     });
   }
 
   ctx.body = shop;
+});
+shopRouter.put('/uninstall', async (ctx) => {
+  const shopDomain = ctx.get('x-shop-domain');
+  if (!shopDomain) {
+    ctx.status = 400;
+    ctx.body = { error: 'shopDomain is required' };
+    return;
+  }
+  const shop = await Shop.findOne({ where: { shopDomain } });
+  if (shop) {
+    await shop.update({ status: 'uninstalled' });
+    ctx.body = shop;
+  } else {
+    ctx.body = { error: 'Shop not found' };
+    ctx.status = 404;
+  }
 });

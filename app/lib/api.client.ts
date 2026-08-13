@@ -1,4 +1,4 @@
-import type { Rule } from "../types";
+import type { Rule, ShopData } from "../types";
 
 const API_BASE = "/api";
 
@@ -48,5 +48,12 @@ export const api = {
       method: "DELETE",
       headers: { "x-shop-domain": shopDomain },
     });
+  },
+  async getShop(shopDomain: string): Promise<ShopData> {
+    const res = await fetch(`${API_BASE}/shop?shopDomain=${encodeURIComponent(shopDomain)}`);
+    if (res.status === 404) {
+      return { id: "", shopDomain, name: shopDomain };
+    }
+    return res.json();
   },
 };

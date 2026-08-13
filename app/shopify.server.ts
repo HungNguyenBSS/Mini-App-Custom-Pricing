@@ -42,6 +42,7 @@ const shopify = shopifyApp({
             shopDomain: session.shop,
             accessToken: session.accessToken,
             name: shopName,
+            status: "active",
           }),
         });
         console.log("[afterAuth] backend response status:", res.status);
