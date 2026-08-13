@@ -233,24 +233,37 @@ export function RuleForm({
             </BlockStack>
             {applyTo === "tags" && (
               <BlockStack gap="200">
-                <div onKeyDown={handleAddTag}>
-                  <TextField
-                    label="Product tags"
-                    labelHidden
-                    placeholder="Product tags"
-                    value={tagInput}
-                    onChange={(value) => setTagInput(value)}
-                    onBlur={() => {
+                <InlineStack gap="200" blockAlign="start" wrap={false}>
+                  <div style={{ flex: 1 }} onKeyDown={handleAddTag}>
+                    <TextField
+                      label="Product tags"
+                      labelHidden
+                      placeholder="Product tags"
+                      value={tagInput}
+                      onChange={(value) => setTagInput(value)}
+                      onBlur={() => {
+                        setTouchedFields((current) => ({
+                          ...current,
+                          tags: true,
+                        }));
+                      }}
+                      autoComplete="off"
+                      error={showTagsError}
+                    />
+                  </div>
+                  <Button
+                    onClick={() => {
                       setTouchedFields((current) => ({
                         ...current,
                         tags: true,
                       }));
                       if (tagInput.trim()) commitTag(tagInput);
                     }}
-                    autoComplete="off"
-                    error={showTagsError}
-                  />
-                </div>
+                    disabled={!tagInput.trim()}
+                  >
+                    Add tag
+                  </Button>
+                </InlineStack>
                 {tags.length > 0 && (
                   <InlineStack gap="100">
                     {tags.map((tag) => (
