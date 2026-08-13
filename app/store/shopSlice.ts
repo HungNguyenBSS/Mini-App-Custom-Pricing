@@ -1,5 +1,5 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
-import { api } from "../mock/api";
+import { api } from "../lib/api.client";
 import type { ShopData } from "../types";
 
 interface ShopState {

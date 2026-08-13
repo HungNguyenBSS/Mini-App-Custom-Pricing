@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { api } from "../mock/api";
+import { api } from "../lib/api.client";
 import type { Rule } from "../types";
 
 export function useRules(shopDomain: string) {

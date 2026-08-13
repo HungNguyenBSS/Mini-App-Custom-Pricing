@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Card,
   FormLayout,
@@ -14,6 +14,7 @@ import {
   Layout,
   Thumbnail,
   PageActions,
+  Pagination,
 } from "@shopify/polaris";
 import { ImageIcon } from "@shopify/polaris-icons";
 import type { PriceType, Product, Rule } from "../types";
@@ -28,6 +29,8 @@ interface Props {
   submitting?: boolean;
 }
 
+const PAGE_SIZE = 10;
+
 function computeModifiedPrice(
   original: number,
   priceType: PriceType,
@@ -38,6 +41,11 @@ function computeModifiedPrice(
   if (priceType === "decrease_percent")
     return Math.max(0, original - (original * amount) / 100);
   return original;
+}
+
+function shortenGid(gid: string) {
+  const parts = gid.split("/");
+  return parts[parts.length - 1] || gid;
 }
 
 export function RuleForm({
@@ -61,6 +69,7 @@ export function RuleForm({
   );
   const [amount, setAmount] = useState(String(initial?.amount ?? ""));
   const [showPricing, setShowPricing] = useState(false);
+  const [pricingPage, setPricingPage] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [touchedFields, setTouchedFields] = useState({
@@ -99,11 +108,26 @@ export function RuleForm({
     });
   }, [applyTo, products, tags]);
 
-  const rowMarkup = relevantProducts.map((p, index) => (
+  // Reset về trang đầu khi danh sách sản phẩm liên quan thay đổi (đổi tag/applyTo)
+  useEffect(() => {
+    setPricingPage(0);
+  }, [relevantProducts]);
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(relevantProducts.length / PAGE_SIZE),
+  );
+
+  const pagedProducts = useMemo(() => {
+    const start = pricingPage * PAGE_SIZE;
+    return relevantProducts.slice(start, start + PAGE_SIZE);
+  }, [relevantProducts, pricingPage]);
+
+  const rowMarkup = pagedProducts.map((p, index) => (
     <IndexTable.Row id={p.id} key={p.id} position={index}>
       <IndexTable.Cell>
         <Text as="span" variant="bodyMd">
-          {p.id}
+          {shortenGid(p.id)}
         </Text>
       </IndexTable.Cell>
       <IndexTable.Cell>
@@ -300,20 +324,33 @@ export function RuleForm({
               </Button>
             </InlineStack>
             {showPricing && (
-              <IndexTable
-                resourceName={{ singular: "product", plural: "products" }}
-                itemCount={relevantProducts.length}
-                headings={[
-                  { title: "ID" },
-                  { title: "Image" },
-                  { title: "Title" },
-                  { title: "Original Price" },
-                  { title: "Modified Price" },
-                ]}
-                selectable={false}
-              >
-                {rowMarkup}
-              </IndexTable>
+              <BlockStack gap="200">
+                <IndexTable
+                  resourceName={{ singular: "product", plural: "products" }}
+                  itemCount={pagedProducts.length}
+                  headings={[
+                    { title: "ID" },
+                    { title: "Image" },
+                    { title: "Title" },
+                    { title: "Original Price" },
+                    { title: "Modified Price" },
+                  ]}
+                  selectable={false}
+                >
+                  {rowMarkup}
+                </IndexTable>
+                {totalPages > 1 && (
+                  <InlineStack align="center">
+                    <Pagination
+                      hasPrevious={pricingPage > 0}
+                      onPrevious={() => setPricingPage((p) => p - 1)}
+                      hasNext={pricingPage < totalPages - 1}
+                      onNext={() => setPricingPage((p) => p + 1)}
+                      label={`Page ${pricingPage + 1} of ${totalPages}`}
+                    />
+                  </InlineStack>
+                )}
+              </BlockStack>
             )}
           </BlockStack>
         </Card>
