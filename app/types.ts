@@ -27,6 +27,4 @@ export interface ShopData {
   id: string;
   shopDomain: string;
   name: string;
-  senderEmail: string;
-  senderEmailEnabled: boolean;
 }

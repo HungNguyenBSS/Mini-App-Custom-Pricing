@@ -42,23 +42,3 @@ shopRouter.post('/', async (ctx) => {
 
   ctx.body = shop;
 });
-
-shopRouter.put('/', async (ctx) => {
-  const data = ctx.request.body as any;
-  const shopDomain = ctx.get('x-shop-domain') || data.shopDomain;
-
-  if (!shopDomain) {
-    ctx.status = 400;
-    ctx.body = { error: 'shopDomain is required' };
-    return;
-  }
-
-  const shop = await Shop.findOne({ where: { shopDomain } });
-  if (shop) {
-    await shop.update(data);
-    ctx.body = shop;
-  } else {
-    ctx.body = { error: 'Shop not found' };
-    ctx.status = 404;
-  }
-});

@@ -34,7 +34,6 @@ export default function App() {
             Home
           </a>
           <a href="/app/rules">Rules</a>
-          <a href="/app/settings">Settings</a>
         </NavMenu>
         <Outlet />
       </PolarisAppProvider>

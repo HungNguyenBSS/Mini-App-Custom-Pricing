@@ -6,8 +6,6 @@ export class Shop extends Model {
   declare shopDomain: string;
   declare accessToken: string;
   declare name: string;
-  declare senderEmail: string;
-  declare senderEmailEnabled: boolean;
 }
 
 Shop.init({
@@ -28,14 +26,6 @@ Shop.init({
     type: DataTypes.STRING,
     allowNull: true,
   },
-  senderEmail: {
-    type: DataTypes.STRING,
-    allowNull: true,
-  },
-  senderEmailEnabled: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: false,
-  }
 }, {
   sequelize,
   tableName: 'shops',

@@ -1,4 +1,4 @@
-import type { Rule, Product, ShopData } from "../types";
+import type { Rule } from "../types";
 
 const API_BASE = "/api";
 
@@ -48,33 +48,5 @@ export const api = {
       method: "DELETE",
       headers: { "x-shop-domain": shopDomain },
     });
-  },
-  async getShop(shopDomain: string): Promise<ShopData> {
-    const res = await fetch(`${API_BASE}/shop?shopDomain=${encodeURIComponent(shopDomain)}`);
-    if (res.status === 404) {
-      return {
-        id: "1",
-        shopDomain,
-        name: shopDomain,
-        senderEmail: "",
-        senderEmailEnabled: true,
-      };
-    }
-    return res.json();
-  },
-  async updateSenderEmail(shopDomain: string, senderEmail: string, enabled: boolean) {
-    const res = await fetch(`${API_BASE}/shop`, {
-      method: "PUT",
-      headers: ruleHeaders(shopDomain),
-      body: JSON.stringify({ senderEmail, senderEmailEnabled: enabled }),
-    });
-    if (res.status === 404) {
-      return fetch(`${API_BASE}/shop`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ shopDomain, senderEmail, senderEmailEnabled: enabled }),
-      }).then(r => r.json());
-    }
-    return res.json();
   },
 };
