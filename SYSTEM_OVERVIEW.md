@@ -37,7 +37,7 @@ Shop metafield: custom_pricing.active_rules
 Theme App Extension (extensions/mini-app-cp-hung/)
     │
     ▼
-Storefront PDP: Liquid + pricing.js
+Storefront PDP: Liquid + embed.js
 ```
 
 ### 2.1. Embedded Shopify app
@@ -98,10 +98,8 @@ Shop identity dùng cho thao tác nhạy cảm (tạo/sửa/xóa rule) vẫn ph�
 
 Theme extension ở `extensions/mini-app-cp-hung/`.
 
-- `blocks/embed.liquid`: app embed block; khi bật sẽ tải `embed.js`.
-- `assets/embed.js`: log `Hello from Hung` để kiểm tra extension đã được bật.
-- `blocks/pricing-discount.liquid`: section block cho PDP; cung cấp dữ liệu product, metafield rules và `shop.money_format` cho JavaScript.
-- `assets/pricing.js`: chọn rule khớp, tính giá, định dạng tiền tệ và cập nhật price element.
+- `blocks/embed.liquid`: app embed block cho PDP; xuất dữ liệu metafield rules, product tags/price, `shop.money_format` và `price_selector` cho JavaScript.
+- `assets/embed.js`: log `Hello from Hung`, chọn rule khớp, tính giá, định dạng tiền tệ và cập nhật price element.
 
 ## 3. Luồng xử lý
 
@@ -170,22 +168,22 @@ Merchant xem bảng preview theo từng trang (10 sản phẩm/trang)
 ### 3.3. Hiển thị giá trên storefront
 
 ```text
-Merchant thêm block Custom Pricing vào trang product trong Theme Editor
+Merchant bật app embed Custom Pricing trong Theme Editor
     ↓
-Liquid đọc shop.metafields.custom_pricing.active_rules
+Chỉ trên PDP, embed.liquid đọc shop.metafields.custom_pricing.active_rules
     ↓
 Liquid xuất JSON: rules, product tags, product price, shop.money_format
     ↓
-pricing.js tìm rule phù hợp:
+embed.js tìm rule phù hợp:
     - applyTo = all: luôn khớp
     - applyTo = tags: product phải có toàn bộ tag của rule
     ↓
 Nếu nhiều rule khớp: dùng rule được tạo sớm nhất
     ↓
-pricing.js tính giá mới và thay nội dung price selector
+embed.js tính giá mới và thay nội dung price selector
 ```
 
-Merchant có thể cấu hình `Price CSS selector` trong block; mặc định là `.price-item--regular`.
+Merchant có thể cấu hình `Price CSS selector` trong app embed; mặc định là `.price-item--regular`.
 
 ### 3.4. Gỡ app
 
@@ -271,12 +269,11 @@ Shopify CLI sẽ tạo tunnel, cập nhật cấu hình development và mở/hi�
 
 ### Bật storefront extension
 
-1. Mở Shopify Admin → **Online Store** → **Themes** → **Customize**.
-2. Bật app embed block nếu cần kiểm tra `Hello from Hung` trong browser DevTools Console.
-3. Vào template Product và thêm block **Custom Pricing**.
-4. Kiểm tra/cập nhật CSS selector phù hợp với theme.
-5. Tạo một rule trạng thái Enable trong embedded app.
-6. Mở PDP trên storefront để kiểm tra giá hiển thị sau giảm.
+1. Mở Shopify Admin → **Online Store** → **Edit Theme**.
+2. Bật app embed **Custom Pricing**.
+3. Tạo một rule trạng thái Enable trong embedded app.
+4. Mở PDP trên storefront để kiểm tra giá hiển thị sau giảm.
+5. (Tùy chọn) Mở DevTools Console để xác nhận log `Hello from Hung` khi embed đã bật.
 
 ## 7. Lưu ý kỹ thuật
 

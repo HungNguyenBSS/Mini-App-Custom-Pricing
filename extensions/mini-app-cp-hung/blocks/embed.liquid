@@ -1,10 +1,39 @@
-{% comment %} App embed block — không hiện UI, chỉ chạy script {% endcomment %}
-<script src="{{ 'embed.js' | asset_url }}" defer></script>
+{% comment %} Custom Pricing app embed — only runs on product pages (PDP). {% endcomment %}
+{% if request.page_type == 'product' %}
+  {% assign rules_json = shop.metafields.custom_pricing.active_rules.value %}
+
+  <div
+    class="cp-pricing-embed"
+    data-cp-selector="{{ block.settings.price_selector }}"
+    hidden
+  >
+    <script type="application/json" data-cp-rules>
+      {{ rules_json | json }}
+    </script>
+    <script type="application/json" data-cp-product>
+      {
+        "tags": {{ product.tags | json }},
+        "price": {{ product.price | json }}
+      }
+    </script>
+    <script type="application/json" data-cp-money-format>
+      {{ shop.money_format | json }}
+    </script>
+  </div>
+{% endif %}
 
 {% schema %}
 {
-  "name": "Hung Test Extension",
+  "name": "Custom Pricing",
   "target": "body",
-  "javascript": "embed.js"
+  "javascript": "embed.js",
+  "settings": [
+    {
+      "type": "text",
+      "id": "price_selector",
+      "label": "Price CSS selector",
+      "default": ".price-item--regular"
+    }
+  ]
 }
 {% endschema %}
