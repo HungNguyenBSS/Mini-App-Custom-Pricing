@@ -1,23 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import {
-  Card,
-  FormLayout,
-  TextField,
-  Select,
-  RadioButton,
-  Tag,
-  InlineStack,
-  BlockStack,
-  Button,
-  IndexTable,
-  Text,
-  Layout,
-  Thumbnail,
-  PageActions,
-  Pagination,
-} from "@shopify/polaris";
-import { ImageIcon } from "@shopify/polaris-icons";
+import { Card, FormLayout, TextField, Select, RadioButton, BlockStack, Layout, PageActions, Text } from "@shopify/polaris";
 import type { PriceType, Product, Rule } from "../types";
+import { ProductPricingPreview } from "./rules/ProductPricingPreview";
+import { RuleProductScope } from "./rules/RuleProductScope";
 
 interface Props {
   initial?: Rule;
@@ -30,23 +15,6 @@ interface Props {
 }
 
 const PAGE_SIZE = 10;
-
-function computeModifiedPrice(
-  original: number,
-  priceType: PriceType,
-  amount: number,
-) {
-  if (priceType === "fixed") return amount;
-  if (priceType === "decrease_amount") return Math.max(0, original - amount);
-  if (priceType === "decrease_percent")
-    return Math.max(0, original - (original * amount) / 100);
-  return original;
-}
-
-function shortenGid(gid: string) {
-  const parts = gid.split("/");
-  return parts[parts.length - 1] || gid;
-}
 
 export function RuleForm({
   initial,
@@ -123,23 +91,6 @@ export function RuleForm({
     return relevantProducts.slice(start, start + PAGE_SIZE);
   }, [relevantProducts, pricingPage]);
 
-  const rowMarkup = pagedProducts.map((p, index) => (
-    <IndexTable.Row id={p.id} key={p.id} position={index}>
-      <IndexTable.Cell>
-        <Text as="span" variant="bodyMd">
-          {shortenGid(p.id)}
-        </Text>
-      </IndexTable.Cell>
-      <IndexTable.Cell>
-        <Thumbnail source={p.image || ImageIcon} alt={p.title} size="small" />
-      </IndexTable.Cell>
-      <IndexTable.Cell>{p.title}</IndexTable.Cell>
-      <IndexTable.Cell>${p.originalPrice.toFixed(2)}</IndexTable.Cell>
-      <IndexTable.Cell>
-        ${computeModifiedPrice(p.originalPrice, priceType, Number(amount) || 0).toFixed(2)}
-      </IndexTable.Cell>
-    </IndexTable.Row>
-  ));
   const amountValue = Number(amount);
   const amountError =
     amount.trim() === ""
@@ -214,68 +165,7 @@ export function RuleForm({
 
       <Layout.AnnotatedSection title="Apply to Products">
         <Card>
-          <BlockStack gap="400">
-            <BlockStack gap="200">
-              <RadioButton
-                label="All products"
-                checked={applyTo === "all"}
-                id="apply-all"
-                name="applyTo"
-                onChange={() => setApplyTo("all")}
-              />
-              <RadioButton
-                label="Product tags"
-                checked={applyTo === "tags"}
-                id="apply-tags"
-                name="applyTo"
-                onChange={() => setApplyTo("tags")}
-              />
-            </BlockStack>
-            {applyTo === "tags" && (
-              <BlockStack gap="200">
-                <InlineStack gap="200" blockAlign="start" wrap={false}>
-                  <div style={{ flex: 1 }} onKeyDown={handleAddTag}>
-                    <TextField
-                      label="Product tags"
-                      labelHidden
-                      placeholder="Product tags"
-                      value={tagInput}
-                      onChange={(value) => setTagInput(value)}
-                      onBlur={() => {
-                        setTouchedFields((current) => ({
-                          ...current,
-                          tags: true,
-                        }));
-                      }}
-                      autoComplete="off"
-                      error={showTagsError}
-                    />
-                  </div>
-                  <Button
-                    onClick={() => {
-                      setTouchedFields((current) => ({
-                        ...current,
-                        tags: true,
-                      }));
-                      if (tagInput.trim()) commitTag(tagInput);
-                    }}
-                    disabled={!tagInput.trim()}
-                  >
-                    Add tag
-                  </Button>
-                </InlineStack>
-                {tags.length > 0 && (
-                  <InlineStack gap="100">
-                    {tags.map((tag) => (
-                      <Tag key={tag} onRemove={() => removeTag(tag)}>
-                        {tag}
-                      </Tag>
-                    ))}
-                  </InlineStack>
-                )}
-              </BlockStack>
-            )}
-          </BlockStack>
+          <RuleProductScope applyTo={applyTo} tagInput={tagInput} tags={tags} tagsError={showTagsError} onApplyToChange={setApplyTo} onTagInputChange={setTagInput} onTagInputBlur={() => setTouchedFields((current) => ({ ...current, tags: true }))} onTagKeyDown={handleAddTag} onAddTag={() => { setTouchedFields((current) => ({ ...current, tags: true })); if (tagInput.trim()) commitTag(tagInput); }} onRemoveTag={removeTag} />
         </Card>
       </Layout.AnnotatedSection>
 
@@ -323,49 +213,10 @@ export function RuleForm({
       </Layout.AnnotatedSection>
 
       <Layout.AnnotatedSection
-        title={
-          <Text as="h2" variant="headingMd">
-            Apply a price to selected products/variants for All customers.
-          </Text>
-        }
+        title={<Text as="h2" variant="headingMd">Apply a price to selected products/variants for All customers.</Text>}
       >
         <Card>
-          <BlockStack gap="400">
-            <InlineStack>
-              <Button onClick={() => setShowPricing((s) => !s)}>
-                {showPricing ? "Hide" : "Show"} product pricing details
-              </Button>
-            </InlineStack>
-            {showPricing && (
-              <BlockStack gap="200">
-                <IndexTable
-                  resourceName={{ singular: "product", plural: "products" }}
-                  itemCount={pagedProducts.length}
-                  headings={[
-                    { title: "ID" },
-                    { title: "Image" },
-                    { title: "Title" },
-                    { title: "Original Price" },
-                    { title: "Modified Price" },
-                  ]}
-                  selectable={false}
-                >
-                  {rowMarkup}
-                </IndexTable>
-                {totalPages > 1 && (
-                  <InlineStack align="center">
-                    <Pagination
-                      hasPrevious={pricingPage > 0}
-                      onPrevious={() => setPricingPage((p) => p - 1)}
-                      hasNext={pricingPage < totalPages - 1}
-                      onNext={() => setPricingPage((p) => p + 1)}
-                      label={`Page ${pricingPage + 1} of ${totalPages}`}
-                    />
-                  </InlineStack>
-                )}
-              </BlockStack>
-            )}
-          </BlockStack>
+          <ProductPricingPreview products={pagedProducts} priceType={priceType} amount={amount} page={pricingPage} totalPages={totalPages} visible={showPricing} onToggle={() => setShowPricing((s) => !s)} onPrevious={() => setPricingPage((p) => p - 1)} onNext={() => setPricingPage((p) => p + 1)} />
         </Card>
       </Layout.AnnotatedSection>
 
