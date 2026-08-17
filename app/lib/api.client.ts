@@ -11,14 +11,16 @@ export const api = {
     const res = await fetch(`${API_BASE}/rules`, {
       headers: { "x-shop-domain": shopDomain },
     });
-    return res.json();
+    const json = await res.json();
+    return json.data || [];
   },
   async getRule(shopDomain: string, id: string): Promise<Rule | undefined> {
     const res = await fetch(`${API_BASE}/rules/${id}`, {
       headers: { "x-shop-domain": shopDomain },
     });
     if (res.status === 404) return undefined;
-    return res.json();
+    const json = await res.json();
+    return json.data;
   },
   async createRule(shopDomain: string, data: Omit<Rule, "id" | "createdAt" | "updatedAt">) {
     const res = await fetch(`${API_BASE}/rules`, {
@@ -26,7 +28,8 @@ export const api = {
       headers: ruleHeaders(shopDomain),
       body: JSON.stringify(data),
     });
-    return res.json();
+    const json = await res.json();
+    return json.data;
   },
   async updateRule(shopDomain: string, id: string, data: Partial<Rule>) {
     const res = await fetch(`${API_BASE}/rules/${id}`, {
@@ -34,14 +37,16 @@ export const api = {
       headers: ruleHeaders(shopDomain),
       body: JSON.stringify(data),
     });
-    return res.json();
+    const json = await res.json();
+    return json.data;
   },
   async duplicateRule(shopDomain: string, id: string) {
     const res = await fetch(`${API_BASE}/rules/${id}/duplicate`, {
       method: "POST",
       headers: { "x-shop-domain": shopDomain },
     });
-    return res.json();
+    const json = await res.json();
+    return json.data;
   },
   async removeRule(shopDomain: string, id: string) {
     await fetch(`${API_BASE}/rules/${id}`, {
@@ -54,6 +59,7 @@ export const api = {
     if (res.status === 404) {
       return { id: "", shopDomain, name: shopDomain };
     }
-    return res.json();
+    const json = await res.json();
+    return json.data;
   },
 };

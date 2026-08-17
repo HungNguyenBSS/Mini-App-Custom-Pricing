@@ -16,7 +16,8 @@ export class Rule extends Model {
 
 Rule.init({
   id: {
-    type: DataTypes.STRING,
+    type: DataTypes.UUID,
+    defaultValue: DataTypes.UUIDV4,
     primaryKey: true,
   },
   shopDomain: {

@@ -10,7 +10,8 @@ export class Shop extends Model {
 
 Shop.init({
   id: {
-    type: DataTypes.STRING,
+    type: DataTypes.UUID,
+    defaultValue: DataTypes.UUIDV4,
     primaryKey: true,
   },
   shopDomain: {

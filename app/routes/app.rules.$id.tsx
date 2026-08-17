@@ -47,13 +47,14 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
     originalPrice: Number(e.node.variants.edges[0]?.node?.price || 0),
   }));
 
-  const ruleRes = await fetch(`${process.env.BACKEND_URL}/rules/${id}`, {
-    headers: { "x-shop-domain": session.shop },
-  });
-  const rule: Rule | null = ruleRes.ok ? await ruleRes.json() : null;
+  const ruleRes = await backendFetch(`/rules/${id}`, {}, session.shop);
+  const data = ruleRes.ok ? await ruleRes.json() : null;
+  const rule: Rule | null = data ? data.data : null;
 
   return { products, rule };
 };
+
+import { backendFetch } from "../lib/backend.server";
 
 export const action = async ({
   request,
@@ -64,14 +65,13 @@ export const action = async ({
   const data = (await request.json()) as UpdateRuleInput;
 
   try {
-    const res = await fetch(`${process.env.BACKEND_URL}/rules/${id}`, {
+    const res = await backendFetch(`/rules/${id}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
-        "x-shop-domain": session.shop,
       },
       body: JSON.stringify(data),
-    });
+    }, session.shop);
 
     if (!res.ok) {
       return { ok: false, error: "Could not update rule. Please try again." };

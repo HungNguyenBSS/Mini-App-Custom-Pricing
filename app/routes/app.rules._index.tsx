@@ -16,6 +16,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
 type ActionResult = { ok: true } | { ok: false; error: string };
 
+import { backendFetch } from "../lib/backend.server";
+
 export const action = async ({ request }: ActionFunctionArgs): Promise<ActionResult> => {
   const { admin, session } = await authenticate.admin(request);
   const formData = await request.formData();
@@ -24,17 +26,17 @@ export const action = async ({ request }: ActionFunctionArgs): Promise<ActionRes
 
   try {
     if (intent === "duplicate") {
-      const res = await fetch(`${process.env.BACKEND_URL}/rules/${ids[0]}/duplicate`, { method: "POST", headers: { "x-shop-domain": session.shop } });
+      const res = await backendFetch(`/rules/${ids[0]}/duplicate`, { method: "POST" }, session.shop);
       if (!res.ok) return { ok: false, error: "Could not duplicate rule." };
     } else if (intent === "remove") {
       for (const id of ids) {
-        const res = await fetch(`${process.env.BACKEND_URL}/rules/${id}`, { method: "DELETE", headers: { "x-shop-domain": session.shop } });
+        const res = await backendFetch(`/rules/${id}`, { method: "DELETE" }, session.shop);
         if (!res.ok) return { ok: false, error: "Could not delete rule." };
       }
     } else if (intent === "enable" || intent === "disable") {
       const status = intent === "enable" ? "enable" : "disable";
       for (const id of ids) {
-        const res = await fetch(`${process.env.BACKEND_URL}/rules/${id}`, { method: "PUT", headers: { "Content-Type": "application/json", "x-shop-domain": session.shop }, body: JSON.stringify({ status }) });
+        const res = await backendFetch(`/rules/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }) }, session.shop);
         if (!res.ok) return { ok: false, error: `Could not ${status} rule(s).` };
       }
     } else return { ok: false, error: "Unknown action." };

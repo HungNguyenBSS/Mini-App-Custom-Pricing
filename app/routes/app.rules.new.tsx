@@ -48,6 +48,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   return { products };
 };
 
+import { backendFetch } from "../lib/backend.server";
+
 export const action = async ({
   request,
 }: ActionFunctionArgs): Promise<ActionResult> => {
@@ -55,14 +57,13 @@ export const action = async ({
   const data = (await request.json()) as CreateRuleInput;
 
   try {
-    const res = await fetch(`${process.env.BACKEND_URL}/rules`, {
+    const res = await backendFetch(`/rules`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-shop-domain": session.shop,
       },
       body: JSON.stringify(data),
-    });
+    }, session.shop);
 
     if (!res.ok) {
       return { ok: false, error: "Could not create rule. Please try again." };

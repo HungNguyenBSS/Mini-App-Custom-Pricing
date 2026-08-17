@@ -1,4 +1,5 @@
 import type { AdminApiContext } from "@shopify/shopify-app-react-router/server";
+import { backendFetch } from "../lib/backend.server";
 
 interface BackendRule {
   id: string;
@@ -12,15 +13,11 @@ interface BackendRule {
   createdAt: string;
 }
 
-export async function syncRulesToMetafield(admin: AdminApiContext, shopDomain: string) {
-  const res = await fetch(
-    `${process.env.BACKEND_URL}/rules?status=enable`,
-    { headers: { "x-shop-domain": shopDomain } },
-  );
-  if (!res.ok) {
-    throw new Error(`Failed to fetch active rules: ${res.status}`);
-  }
-  const rules: BackendRule[] = await res.json();
+export async function syncRulesToMetafield(admin: any, shopDomain: string) {
+  const res = await backendFetch(`/rules?status=enable`, {}, shopDomain);
+  if (!res.ok) throw new Error("Failed to fetch rules");
+  const json = await res.json();
+  const rules: BackendRule[] = json.data || [];
 
   const payload = rules.map((r) => ({
     id: r.id,
