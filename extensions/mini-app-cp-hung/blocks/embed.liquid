@@ -13,7 +13,12 @@
     <script type="application/json" data-cp-product>
       {
         "tags": {{ product.tags | json }},
-        "price": {{ product.price | json }}
+        "price": {{ product.selected_or_first_available_variant.price | json }},
+        "variantPrices": {
+          {% for variant in product.variants %}
+            "{{ variant.id }}": {{ variant.price | json }}{% unless forloop.last %},{% endunless %}
+          {% endfor %}
+        }
       }
     </script>
     <script type="application/json" data-cp-money-format>

@@ -68,27 +68,9 @@
 		return original;
 	}
 
-	function applyPricing(embed) {
-		var rulesEl = embed.querySelector("[data-cp-rules]");
-		var productEl = embed.querySelector("[data-cp-product]");
-		var moneyFormatEl = embed.querySelector("[data-cp-money-format]");
-		if (!rulesEl || !productEl || !moneyFormatEl) return;
-
-		var rules = JSON.parse(rulesEl.textContent || "null") || [];
-		var product = JSON.parse(productEl.textContent || "{}");
-		var moneyFormat = JSON.parse(moneyFormatEl.textContent || '"${{amount}}"');
-		var rule = matchRule(rules, product.tags || []);
-		if (!rule) return;
-
-		var selector = embed.getAttribute("data-cp-selector");
-		if (!selector) return;
-
-		var scope = document.querySelector(".product__info-wrapper") || document;
-		var priceEl = scope.querySelector(selector);
-		if (!priceEl || priceEl.dataset.cpApplied) return;
-
-		var originalText = priceEl.textContent.trim();
-		var newPriceText = formatMoney(computePrice(product.price, rule), moneyFormat);
+	function render(priceEl, originalCents, discountedCents, moneyFormat) {
+		var originalText = formatMoney(originalCents, moneyFormat);
+		var newPriceText = formatMoney(discountedCents, moneyFormat);
 
 		priceEl.style.display = "inline-flex";
 		priceEl.style.flexWrap = "wrap";
@@ -102,7 +84,6 @@
 			'<span class="cp-new-price" style="color:#d82c0d;font-weight:500;white-space:nowrap;font-size:inherit;">' +
 			newPriceText +
 			"</span>";
-		priceEl.dataset.cpApplied = "true";
 	}
 
 	function init() {
@@ -110,7 +91,49 @@
 			var embed = document.querySelector(".cp-pricing-embed");
 			if (!embed) return;
 			console.log("Hello from Hung");
-			applyPricing(embed);
+
+			var rulesEl = embed.querySelector("[data-cp-rules]");
+			var productEl = embed.querySelector("[data-cp-product]");
+			var moneyFormatEl = embed.querySelector("[data-cp-money-format]");
+			if (!rulesEl || !productEl || !moneyFormatEl) return;
+
+			var rules = JSON.parse(rulesEl.textContent || "null") || [];
+			var product = JSON.parse(productEl.textContent || "{}");
+			var moneyFormat = JSON.parse(moneyFormatEl.textContent || '"${{amount}}"');
+			var rule = matchRule(rules, product.tags || []);
+			if (!rule) return;
+
+			var selector = embed.getAttribute("data-cp-selector");
+			if (!selector) return;
+
+			var scope = document.querySelector(".product__info-wrapper") || document;
+			var priceEl = scope.querySelector(selector);
+			if (!priceEl) return;
+
+			// Áp dụng lần đầu theo variant mặc định
+			render(priceEl, product.price, computePrice(product.price, rule), moneyFormat);
+
+			// Cập nhật lại mỗi khi người dùng đổi variant
+			document.addEventListener("variant:change", function (event) {
+				try {
+					var variant = event.detail && event.detail.variant;
+					if (!variant) return;
+
+					var variantPrice =
+						typeof variant.price === "number"
+							? variant.price
+							: (product.variantPrices || {})[String(variant.id)];
+
+					if (typeof variantPrice !== "number") return;
+
+					var currentPriceEl = scope.querySelector(selector);
+					if (!currentPriceEl) return;
+
+					render(currentPriceEl, variantPrice, computePrice(variantPrice, rule), moneyFormat);
+				} catch (err) {
+					console.error("[Custom Pricing] Failed to apply rule on variant change:", err);
+				}
+			});
 		} catch (err) {
 			console.error("[Custom Pricing] Failed to apply rule:", err);
 		}
