@@ -8,7 +8,7 @@ import { authenticate } from "../shopify.server";
 import { syncRulesToMetafield } from "../services/pricing.server";
 import type { Rule } from "../types";
 
-type ActionResult = { ok: true } | { ok: false; error: string };
+type ActionResult = { ok: true; warning?: string } | { ok: false; error: string };
 type CreateRuleInput = Omit<Rule, "id" | "createdAt" | "updatedAt">;
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
@@ -69,7 +69,12 @@ export const action = async ({
       return { ok: false, error: "Could not create rule. Please try again." };
     }
 
-    await syncRulesToMetafield(admin, session.shop);
+    try {
+      await syncRulesToMetafield(admin, session.shop);
+    } catch (syncErr) {
+      console.error("[app.rules.new sync] failed:", syncErr);
+      return { ok: true, warning: "Rule saved, but syncing to Shopify failed." };
+    }
 
     return { ok: true };
   } catch (err) {
@@ -87,6 +92,11 @@ export default function NewRule() {
 
   useEffect(() => {
     if (fetcher.data?.ok) {
+      if (fetcher.data.warning) {
+        shopify.toast.show(fetcher.data.warning, { isError: true });
+      } else {
+        shopify.toast.show("Rule created");
+      }
       navigate("/app/rules");
     }
   }, [fetcher.data, navigate]);

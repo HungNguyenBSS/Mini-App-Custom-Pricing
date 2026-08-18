@@ -45,12 +45,11 @@ export class RuleService {
     const rule = await this.getRuleById(id, shopDomain);
     if (!rule) return null;
 
-    const data = rule.toJSON();
-    delete data.id; // allow UUID to auto-generate
+    const { id: _id, createdAt, updatedAt, ...safeData } = rule.toJSON();
     return await Rule.create({
-      ...data,
-      name: `${data.name} (copy)`,
-      createdAt: new Date(),
+      ...safeData,
+      shopDomain,
+      name: `${safeData.name} (copy)`,
     });
   }
 

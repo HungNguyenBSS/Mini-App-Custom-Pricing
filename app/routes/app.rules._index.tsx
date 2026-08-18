@@ -14,7 +14,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   return { shopDomain: session.shop };
 };
 
-type ActionResult = { ok: true } | { ok: false; error: string };
+type ActionResult = { ok: true; warning?: string } | { ok: false; error: string };
 
 import { backendFetch } from "../lib/backend.server";
 
@@ -41,7 +41,12 @@ export const action = async ({ request }: ActionFunctionArgs): Promise<ActionRes
       }
     } else return { ok: false, error: "Unknown action." };
 
-    await syncRulesToMetafield(admin, session.shop);
+    try {
+      await syncRulesToMetafield(admin, session.shop);
+    } catch (syncErr) {
+      console.error("[app.rules._index sync] failed:", syncErr);
+      return { ok: true, warning: "Action completed, but syncing to Shopify failed." };
+    }
     return { ok: true };
   } catch (err) {
     console.error("[app.rules._index action] failed:", err);
@@ -61,7 +66,15 @@ export default function RulesIndex() {
   const { selectedResources, allResourcesSelected, handleSelectionChange, clearSelection } = useIndexResourceState(ruleResources);
 
   useEffect(() => {
-    if (actionFetcher.data?.ok) { reload(); clearSelection(); }
+    if (actionFetcher.data?.ok) {
+      if (actionFetcher.data.warning) {
+        shopify.toast.show(actionFetcher.data.warning, { isError: true });
+      } else {
+        shopify.toast.show("Action successful");
+      }
+      reload();
+      clearSelection();
+    }
   }, [actionFetcher.data, reload, clearSelection]);
 
   useEffect(() => {
