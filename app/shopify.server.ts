@@ -45,8 +45,6 @@ const shopify = shopifyApp({
             status: "active",
           }),
         });
-        console.log("[afterAuth] backend response status:", res.status);
-        console.log("[afterAuth] backend response body:", await res.text());
       } catch (err) {
         console.error("[afterAuth] Failed to sync shop to backend:", err);
       }

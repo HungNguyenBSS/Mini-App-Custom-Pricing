@@ -11,6 +11,7 @@ export const api = {
     const res = await fetch(`${API_BASE}/rules`, {
       headers: { "x-shop-domain": shopDomain },
     });
+    if (!res.ok) throw new Error(`API Error: ${res.status}`);
     const json = await res.json();
     return json.data || [];
   },
@@ -19,6 +20,7 @@ export const api = {
       headers: { "x-shop-domain": shopDomain },
     });
     if (res.status === 404) return undefined;
+    if (!res.ok) throw new Error(`API Error: ${res.status}`);
     const json = await res.json();
     return json.data;
   },
@@ -28,6 +30,7 @@ export const api = {
       headers: ruleHeaders(shopDomain),
       body: JSON.stringify(data),
     });
+    if (!res.ok) throw new Error(`API Error: ${res.status}`);
     const json = await res.json();
     return json.data;
   },
@@ -37,6 +40,7 @@ export const api = {
       headers: ruleHeaders(shopDomain),
       body: JSON.stringify(data),
     });
+    if (!res.ok) throw new Error(`API Error: ${res.status}`);
     const json = await res.json();
     return json.data;
   },
@@ -45,20 +49,23 @@ export const api = {
       method: "POST",
       headers: { "x-shop-domain": shopDomain },
     });
+    if (!res.ok) throw new Error(`API Error: ${res.status}`);
     const json = await res.json();
     return json.data;
   },
   async removeRule(shopDomain: string, id: string) {
-    await fetch(`${API_BASE}/rules/${id}`, {
+    const res = await fetch(`${API_BASE}/rules/${id}`, {
       method: "DELETE",
       headers: { "x-shop-domain": shopDomain },
     });
+    if (!res.ok) throw new Error(`API Error: ${res.status}`);
   },
   async getShop(shopDomain: string): Promise<ShopData> {
     const res = await fetch(`${API_BASE}/shop?shopDomain=${encodeURIComponent(shopDomain)}`);
     if (res.status === 404) {
       return { id: "", shopDomain, name: shopDomain };
     }
+    if (!res.ok) throw new Error(`API Error: ${res.status}`);
     const json = await res.json();
     return json.data;
   },

@@ -12,8 +12,9 @@ export class RuleService {
   }
 
   async createRule(shopDomain: string, data: any) {
+    const { id, createdAt, updatedAt, ...safeData } = data;
     return await Rule.create({
-      ...data,
+      ...safeData,
       shopDomain,
     });
   }

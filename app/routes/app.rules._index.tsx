@@ -81,7 +81,7 @@ export default function RulesIndex() {
   return (
     <Page title="Configuration" primaryAction={{ content: "Add rule", onAction: () => navigate("/app/rules/new") }}>
       <Card padding="0">
-        {rules.length === 0 && !loading ? <EmptyState heading="Chưa có rule nào" action={{ content: "Add rule", onAction: () => navigate("/app/rules/new") }} image="https://cdn.shopify.com/s/files/1/0757/9955/files/empty-state.svg"><p>Tạo rule giảm giá đầu tiên cho tệp khách hàng cụ thể.</p></EmptyState> : (
+        {rules.length === 0 && !loading ? <EmptyState heading="No rules yet" action={{ content: "Add rule", onAction: () => navigate("/app/rules/new") }} image="https://cdn.shopify.com/s/files/1/0757/9955/files/empty-state.svg"><p>Create your first discount rule for a specific customer group.</p></EmptyState> : (
           <RulesTable rules={filters.sortedRules} loading={loading} selectedResources={selectedResources} allResourcesSelected={allResourcesSelected} onSelectionChange={handleSelectionChange} mode={filters.mode} setMode={filters.setMode} queryValue={filters.queryValue} selectedTab={filters.selectedTab} sortSelected={filters.sortSelected} onQueryChange={filters.onQueryChange} onQueryClear={filters.onQueryClear} onTabChange={filters.onTabChange} onSort={filters.setSortSelected} onNavigate={(id) => navigate(`/app/rules/${id}`)} onDuplicate={(id) => submitAction("duplicate", [id])} onDelete={setRuleToDelete} onBulkAction={(intent) => submitAction(intent, selectedResources)} />
         )}
       </Card>

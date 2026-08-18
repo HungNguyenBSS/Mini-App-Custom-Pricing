@@ -109,13 +109,13 @@ export function RuleForm({
   const showAmountError =
     (touchedFields.amount || submitAttempted) && amountError;
   const showTagsError = (touchedFields.tags || submitAttempted) && tagsError;
-  const canSubmit =
+  const cannotSubmit =
     !name.trim() || amountError || tagsError || effectiveSubmitting;
 
   const handleSubmit = async () => {
     setSubmitAttempted(true);
 
-    if (canSubmit) return;
+    if (cannotSubmit) return;
 
     setIsSubmitting(true);
     try {
@@ -224,7 +224,7 @@ export function RuleForm({
         <PageActions
           primaryAction={{
             content: submitLabel,
-            disabled: Boolean(canSubmit),
+            disabled: Boolean(cannotSubmit),
             loading: effectiveSubmitting,
             onAction: handleSubmit,
           }}

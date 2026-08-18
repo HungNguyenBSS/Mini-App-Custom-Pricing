@@ -59,13 +59,17 @@
 		return matched[0];
 	}
 
-	function computePrice(original, rule) {
-		if (!rule) return original;
+	function computePrice(originalCents, rule) {
+		if (!rule) return originalCents;
+		var original = originalCents / 100;
 		var amount = rule.amount || 0;
-		if (rule.priceType === "fixed") return amount * 100;
-		if (rule.priceType === "decrease_amount") return Math.max(0, original - amount * 100);
-		if (rule.priceType === "decrease_percent") return Math.max(0, original - (original * amount) / 100);
-		return original;
+		
+		var modified = original;
+		if (rule.priceType === "fixed") modified = amount;
+		else if (rule.priceType === "decrease_amount") modified = Math.max(0, original - amount);
+		else if (rule.priceType === "decrease_percent") modified = Math.max(0, original - (original * amount) / 100);
+		
+		return modified * 100;
 	}
 
 	function render(priceEl, originalCents, discountedCents, moneyFormat) {
