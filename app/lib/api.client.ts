@@ -7,13 +7,12 @@ function ruleHeaders(shopDomain: string) {
 }
 
 export const api = {
-  async listRules(shopDomain: string): Promise<Rule[]> {
-    const res = await fetch(`${API_BASE}/rules`, {
+  async listRules(shopDomain: string, page: number = 1, limit: number = 10): Promise<{ data: Rule[], pagination: { total: number, page: number, limit: number, totalPages: number } }> {
+    const res = await fetch(`${API_BASE}/rules?page=${page}&limit=${limit}`, {
       headers: { "x-shop-domain": shopDomain },
     });
     if (!res.ok) throw new Error(`API Error: ${res.status}`);
-    const json = await res.json();
-    return json.data || [];
+    return await res.json();
   },
   async getRule(shopDomain: string, id: string): Promise<Rule | undefined> {
     const res = await fetch(`${API_BASE}/rules/${id}`, {

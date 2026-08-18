@@ -68,6 +68,7 @@ export function RuleForm({
 
   const relevantProducts = useMemo(() => {
     if (applyTo === "all") return products;
+    if (tags.length === 0) return [];
 
     const normalizedTags = tags.map((tag) => tag.toLowerCase());
     return products.filter((product) => {
@@ -101,8 +102,8 @@ export function RuleForm({
           ? "Percentage discount cannot exceed 100%"
           : undefined;
   const tagsError =
-    applyTo === "tags" && tags.length === 0 && tagInput.trim() === ""
-      ? "Add at least one product tag"
+    applyTo === "tags" && tags.length === 0
+      ? "Add at least one product tag (press Enter or click Add Tag)"
       : undefined;
   const nameError = name.trim() === "" ? "Name is required" : undefined;
   const showNameError = (touchedFields.name || submitAttempted) && nameError;

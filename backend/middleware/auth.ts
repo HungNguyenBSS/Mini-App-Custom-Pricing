@@ -16,7 +16,7 @@ export const authMiddleware = async (ctx: Context, next: Next) => {
   try {
     let decoded: any;
     try {
-      decoded = jwt.verify(token, secret);
+      decoded = jwt.verify(token, secret, { clockTolerance: 60 });
     } catch (err) {
       if (!process.env.SHOPIFY_API_SECRET && !process.env.JWT_SECRET) {
         console.warn('⚠️ WARNING: Missing JWT_SECRET or SHOPIFY_API_SECRET. Decoding token without signature verification. Use only in local development!');

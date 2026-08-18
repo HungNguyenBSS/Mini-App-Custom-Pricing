@@ -1,10 +1,25 @@
 import { Rule } from '../models/Rule.js';
 
 export class RuleService {
-  async getAllRules(shopDomain: string, status?: string) {
+  async getAllRules(shopDomain: string, status?: string, page: number = 1, limit: number = 20) {
     const where: any = { shopDomain };
     if (status) where.status = status;
-    return await Rule.findAll({ where });
+    const offset = (page - 1) * limit;
+    const { rows, count } = await Rule.findAndCountAll({ 
+      where, 
+      limit, 
+      offset,
+      order: [['createdAt', 'ASC']]
+    });
+    return {
+      data: rows,
+      pagination: {
+        total: count,
+        page,
+        limit,
+        totalPages: Math.ceil(count / limit)
+      }
+    };
   }
 
   async getRuleById(id: string, shopDomain: string) {

@@ -47,6 +47,7 @@
 			var ruleTags = (rule.tags || []).map(function (tag) {
 				return tag.toLowerCase();
 			});
+			if (ruleTags.length === 0) return false;
 			return ruleTags.every(function (tag) {
 				return tags.indexOf(tag) !== -1;
 			});

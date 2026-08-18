@@ -18,8 +18,11 @@ export class RuleController {
 
     try {
       const status = ctx.query.status as string | undefined;
-      const rules = await ruleService.getAllRules(shopDomain, status);
-      ctx.body = { data: rules };
+      const page = parseInt(ctx.query.page as string) || 1;
+      const limit = parseInt(ctx.query.limit as string) || 20;
+
+      const result = await ruleService.getAllRules(shopDomain, status, page, limit);
+      ctx.body = result;
     } catch (err: any) {
       ctx.status = 500;
       ctx.body = { error: err.message };
