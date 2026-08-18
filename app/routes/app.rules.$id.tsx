@@ -11,41 +11,13 @@ import type { Rule } from "../types";
 type ActionResult = { ok: true; warning?: string } | { ok: false; error: string };
 type UpdateRuleInput = Omit<Rule, "id" | "createdAt" | "updatedAt">;
 
+import { getAllProducts } from "../services/product.server";
+
 export const loader = async ({ request, params }: LoaderFunctionArgs) => {
   const { admin, session } = await authenticate.admin(request);
   const id = params.id as string;
 
-  const productsResponse = await admin.graphql(`
-    query getProducts {
-      products(first: 50) {
-        edges {
-          node {
-            id
-            title
-            tags
-            featuredImage {
-              url
-            }
-            variants(first: 1) {
-              edges {
-                node {
-                  price
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  `);
-  const productsJson = await productsResponse.json();
-  const products = productsJson.data.products.edges.map((e: any) => ({
-    id: e.node.id,
-    title: e.node.title,
-    tags: e.node.tags,
-    image: e.node.featuredImage?.url ?? undefined,
-    originalPrice: Number(e.node.variants.edges[0]?.node?.price || 0),
-  }));
+  const products = await getAllProducts(admin);
 
   const ruleRes = await backendFetch(`/rules/${id}`, {}, session.shop);
   const data = ruleRes.ok ? await ruleRes.json() : null;

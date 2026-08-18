@@ -11,40 +11,11 @@ import type { Rule } from "../types";
 type ActionResult = { ok: true; warning?: string } | { ok: false; error: string };
 type CreateRuleInput = Omit<Rule, "id" | "createdAt" | "updatedAt">;
 
+import { getAllProducts } from "../services/product.server";
+
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { admin } = await authenticate.admin(request);
-  const response = await admin.graphql(`
-    query getProducts {
-      products(first: 50) {
-        edges {
-          node {
-            id
-            title
-            tags
-            featuredImage {
-              url
-            }
-            variants(first: 1) {
-              edges {
-                node {
-                  price
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  `);
-
-  const json = await response.json();
-  const products = json.data.products.edges.map((e: any) => ({
-    id: e.node.id,
-    title: e.node.title,
-    tags: e.node.tags,
-    image: e.node.featuredImage?.url ?? undefined,
-    originalPrice: Number(e.node.variants.edges[0]?.node?.price || 0),
-  }));
+  const products = await getAllProducts(admin);
   return { products };
 };
 
