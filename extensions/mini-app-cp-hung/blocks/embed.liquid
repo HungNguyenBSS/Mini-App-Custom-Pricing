@@ -1,29 +1,24 @@
 {% comment %} Custom Pricing app embed — only runs on product pages (PDP). {% endcomment %}
 {% if request.page_type == 'product' %}
-  {% assign rules_json = shop.metafields.custom_pricing.active_rules.value %}
+
+  <script id="bss-b2b-store-data" type="application/json">
+  {
+    "shop": {
+      "domain": "{{ shop.domain }}",
+      "money_format": {{ shop.money_format | json }}
+    },
+    "product": {{ product | json | base64_encode | json }},
+    "custom_pricing": {
+      "rules": {{ shop.metafields.custom_pricing.active_rules.value | default: '[]' | json }}
+    }
+  }
+  </script>
 
   <div
     class="cp-pricing-embed"
     data-cp-selector="{{ block.settings.price_selector }}"
     hidden
   >
-    <script type="application/json" data-cp-rules>
-      {{ rules_json | json }}
-    </script>
-    <script type="application/json" data-cp-product>
-      {
-        "tags": {{ product.tags | json }},
-        "price": {{ product.selected_or_first_available_variant.price | json }},
-        "variantPrices": {
-          {% for variant in product.variants %}
-            "{{ variant.id }}": {{ variant.price | json }}{% unless forloop.last %},{% endunless %}
-          {% endfor %}
-        }
-      }
-    </script>
-    <script type="application/json" data-cp-money-format>
-      {{ shop.money_format | json }}
-    </script>
   </div>
 {% endif %}
 

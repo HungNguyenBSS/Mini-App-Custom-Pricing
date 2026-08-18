@@ -97,14 +97,17 @@
 			if (!embed) return;
 			console.log("Hello from Hung");
 
-			var rulesEl = embed.querySelector("[data-cp-rules]");
-			var productEl = embed.querySelector("[data-cp-product]");
-			var moneyFormatEl = embed.querySelector("[data-cp-money-format]");
-			if (!rulesEl || !productEl || !moneyFormatEl) return;
+			var storeDataEl = document.getElementById("bss-b2b-store-data");
+			if (!storeDataEl) return;
 
-			var rules = JSON.parse(rulesEl.textContent || "null") || [];
-			var product = JSON.parse(productEl.textContent || "{}");
-			var moneyFormat = JSON.parse(moneyFormatEl.textContent || '"${{amount}}"');
+			var storeData = JSON.parse(storeDataEl.textContent);
+			var moneyFormat = storeData.shop.money_format || "${{amount}}";
+			
+			// product info is base64 encoded by liquid filter
+			var product = JSON.parse(atob(storeData.product));
+			
+			var rules = (storeData.custom_pricing && storeData.custom_pricing.rules) ? storeData.custom_pricing.rules : [];
+
 			var rule = matchRule(rules, product.tags || []);
 			if (!rule) return;
 
@@ -124,10 +127,11 @@
 					var variant = event.detail && event.detail.variant;
 					if (!variant) return;
 
-					var variantPrice =
-						typeof variant.price === "number"
-							? variant.price
-							: (product.variantPrices || {})[String(variant.id)];
+					var variantPrice = typeof variant.price === "number" ? variant.price : null;
+					if (variantPrice === null && product.variants) {
+						var matchedVariant = product.variants.filter(function (v) { return String(v.id) === String(variant.id); })[0];
+						if (matchedVariant) variantPrice = matchedVariant.price;
+					}
 
 					if (typeof variantPrice !== "number") return;
 
