@@ -2,6 +2,7 @@
   "name": "hung-nt1-sbc-b-ts-app",
   "private": true,
   "scripts": {
+    "build:ext": "terser extensions/mini-app-cp-hung/assets/embed.js -o extensions/mini-app-cp-hung/assets/embed.min.js -c -m",
     "build": "react-router build",
     "dev": "shopify app dev",
     "config:link": "shopify app config link",
@@ -73,6 +74,7 @@
     "eslint-plugin-react-hooks": "^4.6.2",
     "graphql-config": "^5.1.1",
     "prettier": "^3.6.2",
+    "terser": "^5.50.0",
     "tsx": "^4.23.12",
     "typescript": "^5.9.3",
     "vite": "^6.3.6"
